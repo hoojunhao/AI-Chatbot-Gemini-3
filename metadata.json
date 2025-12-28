@@ -1,0 +1,8 @@
+{
+  "name": "Gemini Clone",
+  "description": "A high-fidelity replica of the Google Gemini web interface featuring Gemini 3 Flash/Pro models, thinking mode, file/audio inputs, and customizable settings.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
