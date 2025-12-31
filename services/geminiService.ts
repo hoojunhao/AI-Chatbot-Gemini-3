@@ -1,4 +1,4 @@
-import { GoogleGenAI, Content, Part } from "@google/genai";
+import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/genai";
 import { AppSettings, Message, ModelType } from "../types";
 
 export const generateResponseStream = async function* (
@@ -69,11 +69,13 @@ export const generateResponseStream = async function* (
   }
 
   try {
-    const responseStream = await ai.models.generateContentStream({
+    const params: GenerateContentParameters = {
       model: settings.model,
       contents: contents,
       config: config
-    });
+    };
+
+    const responseStream = await ai.models.generateContentStream(params);
 
     for await (const chunk of responseStream) {
       const text = chunk.text;
