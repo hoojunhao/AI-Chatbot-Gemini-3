@@ -18,6 +18,18 @@ import { generateResponseStream } from '../services/geminiService';
 import { AppSettings, ChatSession, Message, ModelType } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 
+// Safely retrieve API Key
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY || '';
+    }
+  } catch (e) {
+    console.warn("Error accessing process.env", e);
+  }
+  return '';
+};
+
 function App() {
   // Initialize sidebar state based on screen size
   // Closed by default on mobile (< 768px), Open on desktop
@@ -77,7 +89,14 @@ function App() {
     // Load from local storage or create new
     const savedSessions = localStorage.getItem('gemini_sessions');
     if (savedSessions) {
-      setSessions(JSON.parse(savedSessions));
+      const parsedSessions = JSON.parse(savedSessions);
+      setSessions(parsedSessions);
+      // If we have sessions but no current one selected (e.g. reload), select the first one
+      if (parsedSessions.length > 0) {
+        setCurrentSessionId(parsedSessions[0].id);
+      } else {
+        createNewSession();
+      }
     } else {
       createNewSession();
     }
@@ -173,7 +192,15 @@ function App() {
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
   const handleSendMessage = async () => {
-    if ((!input.trim() && attachments.length === 0) || isGenerating || !currentSessionId) return;
+    if ((!input.trim() && attachments.length === 0) || isGenerating) return;
+
+    let activeSessionId = currentSessionId;
+
+    // If no session is active (e.g. after delete), create one now
+    if (!activeSessionId) {
+      activeSessionId = Date.now().toString();
+      setCurrentSessionId(activeSessionId);
+    }
 
     const userMsgId = Date.now().toString();
     const userMessage: Message = {
@@ -184,26 +211,42 @@ function App() {
       attachments: attachments.length > 0 ? attachments : undefined
     };
 
-    // Optimistic Update
-    setSessions(prev => prev.map(s => {
-      if (s.id === currentSessionId) {
-        return {
-          ...s,
-          messages: [...s.messages, userMessage],
-          title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title
-        };
-      }
-      return s;
-    }));
+    // Optimistic Update: Add message to session, creating session if needed in state
+    setSessions(prev => {
+        const existingSession = prev.find(s => s.id === activeSessionId);
+        
+        if (!existingSession) {
+            const newSession: ChatSession = {
+                id: activeSessionId!,
+                title: input.slice(0, 30) || 'New Conversation',
+                messages: [userMessage],
+                updatedAt: Date.now(),
+                isPinned: false
+            };
+            return [newSession, ...prev];
+        } else {
+            return prev.map(s => {
+              if (s.id === activeSessionId) {
+                return {
+                  ...s,
+                  messages: [...s.messages, userMessage],
+                  title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title
+                };
+              }
+              return s;
+            });
+        }
+    });
 
     setInput('');
     setAttachments([]);
     setIsGenerating(true);
 
     const modelMsgId = (Date.now() + 1).toString();
+    
     // Add placeholder model message
     setSessions(prev => prev.map(s => {
-      if (s.id === currentSessionId) {
+      if (s.id === activeSessionId) {
         return {
           ...s,
           messages: [...s.messages, {
@@ -218,16 +261,17 @@ function App() {
     }));
 
     try {
-      const apiKey = process.env.API_KEY || ''; // Assume env injected
-      if (!apiKey) throw new Error("API Key not found in environment");
+      const apiKey = getApiKey();
+      if (!apiKey) throw new Error("API Key not found. Please ensure process.env.API_KEY is set.");
 
-      // Get history for context if memory is enabled
-      const history = currentSession?.messages || [];
+      // Get history. If it's a new session, history is empty (correct). 
+      // If existing, it has previous messages.
+      const history = sessions.find(s => s.id === activeSessionId)?.messages || [];
       
       const stream = generateResponseStream(
         apiKey,
         settings,
-        history, // Pass existing history *before* the new message (service adds new one)
+        history, 
         userMessage.text,
         userMessage.attachments
       );
@@ -237,7 +281,7 @@ function App() {
       for await (const chunk of stream) {
         fullResponse += chunk;
         setSessions(prev => prev.map(s => {
-            if (s.id === currentSessionId) {
+            if (s.id === activeSessionId) {
                 const msgs = [...s.messages];
                 const lastMsg = msgs[msgs.length - 1];
                 if (lastMsg.id === modelMsgId) {
@@ -250,13 +294,15 @@ function App() {
       }
 
     } catch (error) {
-      console.error("Error generating", error);
+      console.error("Error generating response:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      
       setSessions(prev => prev.map(s => {
-        if (s.id === currentSessionId) {
+        if (s.id === activeSessionId) {
             const msgs = [...s.messages];
             const lastMsg = msgs[msgs.length - 1];
             if (lastMsg.id === modelMsgId) {
-                lastMsg.text = "Error: Could not generate response. Please check your API Key or connection.";
+                lastMsg.text = `Error: ${errorMessage}. Please check your connection and API Key.`;
                 lastMsg.isError = true;
             }
             return { ...s, messages: msgs };

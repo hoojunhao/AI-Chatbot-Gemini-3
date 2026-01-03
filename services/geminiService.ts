@@ -45,6 +45,7 @@ export const generateResponseStream = async function* (
   // Add the new message to contents
   contents.push({ role: 'user', parts });
 
+  // Generation Config
   const config: any = {
     systemInstruction: settings.systemInstruction,
     temperature: settings.temperature,
@@ -77,12 +78,20 @@ export const generateResponseStream = async function* (
 
     const responseStream = await ai.models.generateContentStream(params);
 
+    let hasYielded = false;
+
     for await (const chunk of responseStream) {
       const text = chunk.text;
       if (text) {
+        hasYielded = true;
         yield text;
       }
     }
+
+    if (!hasYielded) {
+      yield "I'm unable to generate a response for this request. It might have been flagged by safety filters.";
+    }
+
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
