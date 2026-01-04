@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './components/App';
 import Auth from './components/Auth';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { BrowserRouter } from 'react-router-dom';
 
 const AppWithAuth = () => {
   const { user, loading } = useAuth();
@@ -15,7 +16,8 @@ const AppWithAuth = () => {
     );
   }
 
-  return user ? <App /> : <Auth />;
+  // Allow guest access - App handles routing and auth checks internally
+  return <App />;
 };
 
 const rootElement = document.getElementById('root');
@@ -27,7 +29,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <AppWithAuth />
+      <BrowserRouter>
+        <AppWithAuth />
+      </BrowserRouter>
     </AuthProvider>
   </React.StrictMode>
 );

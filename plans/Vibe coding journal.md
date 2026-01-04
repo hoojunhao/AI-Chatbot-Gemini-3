@@ -58,3 +58,17 @@ useEffect(() => {
 
 **Result**: Clean URL after Google OAuth login, no performance impact, login works correctly.
 
+### Feature: Chat Session Routing
+Implemented client-side routing using `react-router-dom` to support deep linking to chat sessions.
+
+**Changes**:
+- Installed `react-router-dom`.
+- Wrapped app in `BrowserRouter`.
+- Updated `App.tsx` to handle route params.
+
+**Outcome**:
+- `/app` -> Loads new chat state.
+- `/app/<session_id>` -> Loads specific chat.
+- All sidebar interactions sync with URL.
+
+

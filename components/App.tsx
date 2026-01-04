@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   Menu,
   Send,
@@ -9,8 +10,10 @@ import {
   Paperclip,
   X,
   Compass,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
+import Auth from './Auth';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
 import ModelSelector from './ModelSelector';
@@ -27,10 +30,12 @@ const getApiKey = () => {
   return import.meta.env.VITE_GEMINI_API_KEY || '';
 };
 
-function App() {
+function GeminiChat() {
   const { user, signOut } = useAuth();
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+
   // Initialize sidebar state based on screen size
-  // Closed by default on mobile (< 768px), Open on desktop
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 768;
@@ -68,7 +73,6 @@ function App() {
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     if (user) {
-      // Fire and forget update
       SettingsService.updateSettings(user.id, newSettings).catch(err =>
         console.error("Failed to save settings:", err)
       );
@@ -77,7 +81,9 @@ function App() {
 
   // Chat State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  // currentSessionId is synced with URL
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null);
+
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<{ mimeType: string; data: string; name: string }[]>([]);
@@ -92,7 +98,6 @@ function App() {
 
   // Location State
   const [location, setLocation] = useState<string>(() => {
-    // Initial sync guess using Timezone
     try {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (timeZone) {
@@ -103,20 +108,20 @@ function App() {
     return 'Unknown Location';
   });
 
+  // Sync URL sessionId with state
+  useEffect(() => {
+    setCurrentSessionId(sessionId || null);
+  }, [sessionId]);
+
   // Initialize Sessions
   useEffect(() => {
     if (user) {
       ChatService.fetchSessions(user.id)
         .then(fetchedSessions => {
           setSessions(fetchedSessions);
-          if (fetchedSessions.length > 0 && !currentSessionId) {
-            setCurrentSessionId(fetchedSessions[0].id);
-          } else if (fetchedSessions.length === 0) {
-            // Don't auto-create here to avoid empty sessions spam, 
-            // or create one if you want a blank slate start.
-            // Let's create a memory-only empty state or prompt user to start.
-            // For now, let's just clear sessions.
-          }
+
+          // Note: We deliberately DO NOT auto-select the first session here if !sessionId.
+          // This ensures /app loads as "New Chat" (empty state) as requested.
         })
         .catch(err => console.error("Failed to load sessions:", err));
     } else {
@@ -124,9 +129,6 @@ function App() {
       setCurrentSessionId(null);
     }
   }, [user]);
-
-  // Removed localStorage sync effects
-
 
   // Handle Theme Side Effects
   useEffect(() => {
@@ -150,7 +152,6 @@ function App() {
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
-            // Use OpenStreetMap Nominatim for reverse geocoding
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
             const data = await response.json();
             const city = data.address.city || data.address.town || data.address.village || data.address.county;
@@ -161,7 +162,6 @@ function App() {
               setLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
             }
           } catch (e) {
-            // Keep timezone fallback on error
             console.warn("Reverse geocoding failed", e);
           }
         },
@@ -177,32 +177,16 @@ function App() {
   };
 
   const createNewSession = async () => {
-    if (!user) return;
-
-    try {
-      const id = await ChatService.createSession(user.id, 'New Chat');
-      const newSession: ChatSession = {
-        id,
-        title: 'New Chat',
-        messages: [],
-        updatedAt: Date.now(),
-        isPinned: false
-      };
-      setSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      setInput('');
-      setAttachments([]);
-      // Close sidebar on mobile
-      if (window.innerWidth < 768) setIsSidebarOpen(false);
-    } catch (error) {
-      console.error('Failed to create session:', error);
-    }
+    navigate('/app');
+    setInput('');
+    setAttachments([]);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
   const deleteSession = (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id));
     if (currentSessionId === id) {
-      setCurrentSessionId(null);
+      navigate('/app');
     }
     ChatService.deleteSession(id).catch(err => console.error("Failed to delete session", err));
   };
@@ -232,15 +216,27 @@ function App() {
 
   const handleSendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isGenerating) return;
-    if (!user) return;
+    // Allow guest users to chat (no persistence)
+    // if (!user) return;
 
     let activeSessionId = currentSessionId;
 
-    // If no session is active (e.g. after delete), create one now
+    // If no session is active, create one now
     if (!activeSessionId) {
       try {
-        activeSessionId = await ChatService.createSession(user.id, input.slice(0, 30) || 'New Chat');
-        setCurrentSessionId(activeSessionId);
+        if (user) {
+          activeSessionId = await ChatService.createSession(user.id, input.slice(0, 30) || 'New Chat');
+          navigate(`/app/${activeSessionId}`);
+        } else {
+          // Guest: Generate a random local ID
+          activeSessionId = Date.now().toString();
+          // Don't navigate to /app/id for guest to avoid confusion? Or do we?
+          // If we don't navigate, URL stays /app. That's fine for ephemeral.
+          // But if they refresh, it's gone.
+          // Let's keep it simple: URL stays /app for guest. 
+          // Actually, if we use navigate, we might imply persistence.
+          // Let's NOT navigate for guest.
+        }
 
         const newSession: ChatSession = {
           id: activeSessionId,
@@ -266,7 +262,6 @@ function App() {
       attachments: attachments.length > 0 ? attachments : undefined
     };
 
-    // Optimistic Update
     setSessions(prev => {
       return prev.map(s => {
         if (s.id === activeSessionId) {
@@ -282,7 +277,7 @@ function App() {
     });
 
     const currentInput = input;
-    const currentAttachments = [...attachments]; // Copy for async usage
+    const currentAttachments = [...attachments];
 
     setInput('');
     setAttachments([]);
@@ -290,7 +285,6 @@ function App() {
 
     const modelMsgId = (Date.now() + 1).toString();
 
-    // Add placeholder model message
     setSessions(prev => prev.map(s => {
       if (s.id === activeSessionId) {
         return {
@@ -298,7 +292,7 @@ function App() {
           messages: [...s.messages, {
             id: modelMsgId,
             role: 'model',
-            text: '', // Start empty
+            text: '',
             timestamp: Date.now()
           }]
         };
@@ -306,31 +300,24 @@ function App() {
       return s;
     }));
 
-    // Persist User Message
-    ChatService.saveMessage(activeSessionId, 'user', currentInput, currentAttachments.length > 0 ? currentAttachments : undefined)
-      .catch(err => console.error("Failed to save user message", err));
+    if (user) {
+      ChatService.saveMessage(activeSessionId, 'user', currentInput, currentAttachments.length > 0 ? currentAttachments : undefined)
+        .catch(err => console.error("Failed to save user message", err));
+    }
 
     try {
       const apiKey = getApiKey();
       if (!apiKey) throw new Error("API Key not found. Please ensure process.env.API_KEY is set.");
 
-      const session = sessions.find(s => s.id === activeSessionId);
-      const existingMessages = session ? session.messages : [];
-      const history = existingMessages;
+      const sessionInState = sessions.find(s => s.id === activeSessionId) ||
+        (activeSessionId && activeSessionId === currentSessionId ? currentSession : undefined);
+
+      const existingMessages = sessionInState ? sessionInState.messages : [];
 
       const stream = generateResponseStream(
         apiKey,
         settings,
-        history, // Pass history including the new user message (though generateResponseStream might append it again? No, checks logic)
-        // services/geminiService.ts: logic is: 
-        // 1. takes history (Message[])
-        // 2. filters history
-        // 3. appends `newMessage` (string).
-        // Be careful not to duplicate.
-        // `generateResponseStream` signature: (apiKey, settings, history, newMessage, attachments)
-        // The `history` param should NOT include the `newMessage`.
-        // existingMessages does NOT include userMessage yet (from render scope).
-        // So passing `existingMessages` (which is previous history) + `userMessage.text` is correct.
+        existingMessages,
         currentInput,
         currentAttachments
       );
@@ -352,13 +339,9 @@ function App() {
         }));
       }
 
-      // Persist Model Message
-      if (activeSessionId) {
+      if (activeSessionId && user) {
         ChatService.saveMessage(activeSessionId, 'model', fullResponse)
           .catch(err => console.error("Failed to save model message", err));
-
-        // Also update session title if it was new (handled by renaming? No, backend auto-updates title? No, we set title in CreateSession)
-        // If we want dynamic title generation, that's a separate feature.
       }
 
     } catch (error) {
@@ -378,8 +361,7 @@ function App() {
         return s;
       }));
 
-      // Persist Error Message (optional)
-      if (activeSessionId) {
+      if (activeSessionId && user) {
         ChatService.saveMessage(activeSessionId, 'model', `Error: ${errorMessage}`, undefined, true)
           .catch(err => console.error("Failed to save error message", err));
       }
@@ -424,7 +406,6 @@ function App() {
       return;
     }
 
-    // Use Speech-to-Text (Dictation)
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -461,12 +442,10 @@ function App() {
   };
 
   const stopRecording = () => {
-    // Stop Speech Recognition
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-
     setIsRecording(false);
   };
 
@@ -484,7 +463,7 @@ function App() {
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         sessions={sessions}
         currentSessionId={currentSessionId}
-        onSelectSession={setCurrentSessionId}
+        onSelectSession={(id) => navigate(`/app/${id}`)}
         onNewChat={createNewSession}
         onDeleteSession={deleteSession}
         onTogglePinSession={togglePinSession}
@@ -510,13 +489,23 @@ function App() {
           />
 
           <div className="ml-auto">
-            <button
-              onClick={() => signOut()}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-gray-500"
-              title="Sign Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            {user ? (
+              <button
+                onClick={() => signOut()}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-gray-500"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/auth')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm font-medium"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </button>
+            )}
           </div>
         </div>
 
@@ -540,7 +529,6 @@ function App() {
                     key={suggestion}
                     onClick={() => {
                       setInput(suggestion);
-                      // Optional: auto-send
                     }}
                     className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
                   >
@@ -702,6 +690,17 @@ function App() {
         onUpdateSettings={handleUpdateSettings}
       />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/app" replace />} />
+      <Route path="/app" element={<GeminiChat />} />
+      <Route path="/app/:sessionId" element={<GeminiChat />} />
+      <Route path="/auth" element={<Auth />} />
+    </Routes>
   );
 }
 
