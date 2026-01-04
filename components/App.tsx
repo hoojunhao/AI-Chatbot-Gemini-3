@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Menu, 
-  Send, 
-  Mic, 
-  Image as ImageIcon, 
-  StopCircle, 
+import {
+  Menu,
+  Send,
+  Mic,
+  Image as ImageIcon,
+  StopCircle,
   Sparkles,
   Paperclip,
   X,
@@ -20,14 +20,8 @@ import { DEFAULT_SETTINGS } from '../constants';
 
 // Safely retrieve API Key
 const getApiKey = () => {
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env.API_KEY || '';
-    }
-  } catch (e) {
-    console.warn("Error accessing process.env", e);
-  }
-  return '';
+  // in Vite, process.env.API_KEY is replaced by the actual value string during build/serve
+  return process.env.API_KEY || '';
 };
 
 function App() {
@@ -41,7 +35,7 @@ function App() {
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
+
   // Initialize theme from local storage or system preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -55,14 +49,14 @@ function App() {
   });
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  
+
   // Chat State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<{ mimeType: string; data: string; name: string }[]>([]);
-  
+
   // Audio State
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -80,7 +74,7 @@ function App() {
         const city = timeZone.split('/')[1]?.replace(/_/g, ' ');
         return city || 'Unknown Location';
       }
-    } catch (e) {}
+    } catch (e) { }
     return 'Unknown Location';
   });
 
@@ -136,7 +130,7 @@ function App() {
             if (city) {
               setLocation(`${city}${state ? `, ${state}` : ''}`);
             } else {
-               setLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+              setLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
             }
           } catch (e) {
             // Keep timezone fallback on error
@@ -178,13 +172,13 @@ function App() {
   };
 
   const togglePinSession = (id: string) => {
-    setSessions(prev => prev.map(s => 
+    setSessions(prev => prev.map(s =>
       s.id === id ? { ...s, isPinned: !s.isPinned } : s
     ));
   };
 
   const renameSession = (id: string, newTitle: string) => {
-    setSessions(prev => prev.map(s => 
+    setSessions(prev => prev.map(s =>
       s.id === id ? { ...s, title: newTitle } : s
     ));
   };
@@ -213,29 +207,29 @@ function App() {
 
     // Optimistic Update: Add message to session, creating session if needed in state
     setSessions(prev => {
-        const existingSession = prev.find(s => s.id === activeSessionId);
-        
-        if (!existingSession) {
-            const newSession: ChatSession = {
-                id: activeSessionId!,
-                title: input.slice(0, 30) || 'New Conversation',
-                messages: [userMessage],
-                updatedAt: Date.now(),
-                isPinned: false
+      const existingSession = prev.find(s => s.id === activeSessionId);
+
+      if (!existingSession) {
+        const newSession: ChatSession = {
+          id: activeSessionId!,
+          title: input.slice(0, 30) || 'New Conversation',
+          messages: [userMessage],
+          updatedAt: Date.now(),
+          isPinned: false
+        };
+        return [newSession, ...prev];
+      } else {
+        return prev.map(s => {
+          if (s.id === activeSessionId) {
+            return {
+              ...s,
+              messages: [...s.messages, userMessage],
+              title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title
             };
-            return [newSession, ...prev];
-        } else {
-            return prev.map(s => {
-              if (s.id === activeSessionId) {
-                return {
-                  ...s,
-                  messages: [...s.messages, userMessage],
-                  title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title
-                };
-              }
-              return s;
-            });
-        }
+          }
+          return s;
+        });
+      }
     });
 
     setInput('');
@@ -243,7 +237,7 @@ function App() {
     setIsGenerating(true);
 
     const modelMsgId = (Date.now() + 1).toString();
-    
+
     // Add placeholder model message
     setSessions(prev => prev.map(s => {
       if (s.id === activeSessionId) {
@@ -267,11 +261,11 @@ function App() {
       // Get history. If it's a new session, history is empty (correct). 
       // If existing, it has previous messages.
       const history = sessions.find(s => s.id === activeSessionId)?.messages || [];
-      
+
       const stream = generateResponseStream(
         apiKey,
         settings,
-        history, 
+        history,
         userMessage.text,
         userMessage.attachments
       );
@@ -281,31 +275,31 @@ function App() {
       for await (const chunk of stream) {
         fullResponse += chunk;
         setSessions(prev => prev.map(s => {
-            if (s.id === activeSessionId) {
-                const msgs = [...s.messages];
-                const lastMsg = msgs[msgs.length - 1];
-                if (lastMsg.id === modelMsgId) {
-                    lastMsg.text = fullResponse;
-                }
-                return { ...s, messages: msgs };
+          if (s.id === activeSessionId) {
+            const msgs = [...s.messages];
+            const lastMsg = msgs[msgs.length - 1];
+            if (lastMsg.id === modelMsgId) {
+              lastMsg.text = fullResponse;
             }
-            return s;
+            return { ...s, messages: msgs };
+          }
+          return s;
         }));
       }
 
     } catch (error) {
       console.error("Error generating response:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      
+
       setSessions(prev => prev.map(s => {
         if (s.id === activeSessionId) {
-            const msgs = [...s.messages];
-            const lastMsg = msgs[msgs.length - 1];
-            if (lastMsg.id === modelMsgId) {
-                lastMsg.text = `Error: ${errorMessage}. Please check your connection and API Key.`;
-                lastMsg.isError = true;
-            }
-            return { ...s, messages: msgs };
+          const msgs = [...s.messages];
+          const lastMsg = msgs[msgs.length - 1];
+          if (lastMsg.id === modelMsgId) {
+            lastMsg.text = `Error: ${errorMessage}. Please check your connection and API Key.`;
+            lastMsg.isError = true;
+          }
+          return { ...s, messages: msgs };
         }
         return s;
       }));
@@ -354,7 +348,7 @@ function App() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
-    
+
     textBeforeRecordingRef.current = input;
     recognitionRef.current = recognition;
 
@@ -367,7 +361,7 @@ function App() {
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
-      
+
       const prefix = textBeforeRecordingRef.current;
       const spacer = (prefix && !prefix.endsWith(' ') && transcript) ? ' ' : '';
       setInput(prefix + spacer + transcript);
@@ -391,7 +385,7 @@ function App() {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-    
+
     setIsRecording(false);
   };
 
@@ -404,7 +398,7 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-[#131314]">
-      <Sidebar 
+      <Sidebar
         isOpen={isSidebarOpen}
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         sessions={sessions}
@@ -427,8 +421,8 @@ function App() {
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-gray-500">
             <Menu className="w-5 h-5" />
           </button>
-          
-          <ModelSelector 
+
+          <ModelSelector
             settings={settings}
             onUpdateSettings={setSettings}
           />
@@ -436,181 +430,181 @@ function App() {
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
-           {!currentSession || currentSession.messages.length === 0 ? (
-             <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-               <div className="mb-8 relative">
-                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-red-500 blur-xl opacity-20 absolute inset-0"></div>
-                 <Sparkles className="w-16 h-16 text-blue-500 relative z-10" />
-               </div>
-               <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
-                 Hello, Human.
-               </h1>
-               <p className="text-xl text-gray-500 dark:text-gray-400 mb-8 max-w-lg">
-                 How can I help you today?
-               </p>
-               <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
-                 {['Explain quantum physics', 'Write a React component', 'Plan a trip to Tokyo', 'Debug this code'].map(suggestion => (
-                   <button 
-                     key={suggestion}
-                     onClick={() => {
-                        setInput(suggestion);
-                        // Optional: auto-send
-                     }}
-                     className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
-                   >
-                     <Compass className="w-4 h-4 inline-block mr-2 text-blue-500" />
-                     {suggestion}
-                   </button>
-                 ))}
-               </div>
-             </div>
-           ) : (
-             <div className="max-w-4xl mx-auto w-full pb-32 pt-8 px-4">
-                {currentSession.messages.map((msg, idx) => (
-                  <div key={msg.id} className={`flex gap-4 mb-8 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                    
-                    {msg.role === 'model' && (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-red-500 flex items-center justify-center shrink-0 mt-1">
-                           <Sparkles className="w-5 h-5 text-white" />
-                        </div>
+          {!currentSession || currentSession.messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+              <div className="mb-8 relative">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-red-500 blur-xl opacity-20 absolute inset-0"></div>
+                <Sparkles className="w-16 h-16 text-blue-500 relative z-10" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
+                Hello, Human.
+              </h1>
+              <p className="text-xl text-gray-500 dark:text-gray-400 mb-8 max-w-lg">
+                How can I help you today?
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
+                {['Explain quantum physics', 'Write a React component', 'Plan a trip to Tokyo', 'Debug this code'].map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setInput(suggestion);
+                      // Optional: auto-send
+                    }}
+                    className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
+                  >
+                    <Compass className="w-4 h-4 inline-block mr-2 text-blue-500" />
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-4xl mx-auto w-full pb-32 pt-8 px-4">
+              {currentSession.messages.map((msg, idx) => (
+                <div key={msg.id} className={`flex gap-4 mb-8 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+
+                  {msg.role === 'model' && (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-red-500 flex items-center justify-center shrink-0 mt-1">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+
+                  <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    {/* Attachments Display */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {msg.attachments.map((att, i) => (
+                          <div key={i} className="relative group">
+                            {att.mimeType.startsWith('image/') ? (
+                              <img
+                                src={`data:${att.mimeType};base64,${att.data}`}
+                                alt="attachment"
+                                className="h-32 w-auto rounded-lg border border-gray-200 dark:border-[#444] object-cover"
+                              />
+                            ) : (
+                              <div className="h-16 w-32 bg-gray-100 dark:bg-[#333] rounded-lg flex items-center justify-center text-xs text-gray-500">
+                                Audio/File
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
 
-                    <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        {/* Attachments Display */}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {msg.attachments.map((att, i) => (
-                                    <div key={i} className="relative group">
-                                      {att.mimeType.startsWith('image/') ? (
-                                          <img 
-                                            src={`data:${att.mimeType};base64,${att.data}`} 
-                                            alt="attachment" 
-                                            className="h-32 w-auto rounded-lg border border-gray-200 dark:border-[#444] object-cover"
-                                          />
-                                      ) : (
-                                          <div className="h-16 w-32 bg-gray-100 dark:bg-[#333] rounded-lg flex items-center justify-center text-xs text-gray-500">
-                                              Audio/File
-                                          </div>
-                                      )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className={`
+                    <div className={`
                             relative px-5 py-3.5 rounded-2xl text-[15px] leading-7
-                            ${msg.role === 'user' 
-                                ? 'bg-[#f0f4f9] dark:bg-[#333537] text-gray-800 dark:text-gray-100 rounded-tr-sm' 
-                                : 'text-gray-800 dark:text-gray-100 w-full'
-                            }
+                            ${msg.role === 'user'
+                        ? 'bg-[#f0f4f9] dark:bg-[#333537] text-gray-800 dark:text-gray-100 rounded-tr-sm'
+                        : 'text-gray-800 dark:text-gray-100 w-full'
+                      }
                         `}>
-                            {msg.role === 'model' ? (
-                                msg.text ? <MarkdownRenderer content={msg.text} /> : (
-                                    <div className="flex gap-1 items-center h-6">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-                                        <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                                    </div>
-                                )
-                            ) : (
-                                <div className="whitespace-pre-wrap">{msg.text}</div>
-                            )}
-                        </div>
+                      {msg.role === 'model' ? (
+                        msg.text ? <MarkdownRenderer content={msg.text} /> : (
+                          <div className="flex gap-1 items-center h-6">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                        )
+                      ) : (
+                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                      )}
                     </div>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
-             </div>
-           )}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
 
         {/* Input Area */}
         <div className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#131314]/90 backdrop-blur-md pt-2 pb-6 px-4">
-           <div className="max-w-3xl mx-auto relative">
-              {/* Active Attachments Preview */}
-              {attachments.length > 0 && (
-                <div className="flex gap-2 mb-3 overflow-x-auto py-2">
-                  {attachments.map((att, i) => (
-                    <div key={i} className="relative group shrink-0">
-                       {att.mimeType.startsWith('image/') ? (
-                          <img src={`data:${att.mimeType};base64,${att.data}`} className="h-16 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
-                       ) : (
-                          <div className="h-16 w-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center">
-                              <Mic className="w-6 h-6 text-gray-500" />
-                          </div>
-                       )}
-                       <button 
-                         onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                         className="absolute -top-2 -right-2 bg-gray-500 text-white rounded-full p-0.5 hover:bg-red-500"
-                       >
-                         <X className="w-3 h-3" />
-                       </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="max-w-3xl mx-auto relative">
+            {/* Active Attachments Preview */}
+            {attachments.length > 0 && (
+              <div className="flex gap-2 mb-3 overflow-x-auto py-2">
+                {attachments.map((att, i) => (
+                  <div key={i} className="relative group shrink-0">
+                    {att.mimeType.startsWith('image/') ? (
+                      <img src={`data:${att.mimeType};base64,${att.data}`} className="h-16 w-16 object-cover rounded-md border border-gray-300 dark:border-gray-600" />
+                    ) : (
+                      <div className="h-16 w-16 bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center">
+                        <Mic className="w-6 h-6 text-gray-500" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute -top-2 -right-2 bg-gray-500 text-white rounded-full p-0.5 hover:bg-red-500"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              <div className={`
+            <div className={`
                  flex items-end gap-2 p-2 rounded-[28px] border transition-colors
                  ${isGenerating ? 'bg-gray-50 dark:bg-[#1e1f20] border-gray-200 dark:border-[#333]' : 'bg-[#f0f4f9] dark:bg-[#1e1f20] border-transparent focus-within:bg-white dark:focus-within:bg-[#1e1f20] focus-within:border-gray-300 dark:focus-within:border-[#444]'}
               `}>
-                 <button 
-                   onClick={() => fileInputRef.current?.click()}
-                   className="p-2.5 text-gray-500 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full transition-colors shrink-0"
-                   title="Upload image"
-                 >
-                    <ImageIcon className="w-5 h-5" />
-                 </button>
-                 <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*" 
-                    multiple 
-                    onChange={handleFileUpload}
-                 />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 text-gray-500 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full transition-colors shrink-0"
+                title="Upload image"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+              />
 
-                 <textarea
-                    value={input}
-                    onChange={(e) => {
-                        setInput(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
-                    }}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask Gemini"
-                    className="flex-1 max-h-[150px] py-2.5 bg-transparent border-none outline-none resize-none text-gray-800 dark:text-gray-100 placeholder-gray-500 leading-6"
-                    rows={1}
-                 />
-                 
-                 {input.trim() || attachments.length > 0 ? (
-                    <button 
-                      onClick={handleSendMessage}
-                      disabled={isGenerating}
-                      className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                    >
-                        <Send className="w-5 h-5" />
-                    </button>
-                 ) : (
-                    <button 
-                      onClick={handleMicClick}
-                      className={`p-2.5 rounded-full transition-all duration-200 shrink-0 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-[#333]'}`}
-                    >
-                        {isRecording ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    </button>
-                 )}
-              </div>
-              <div className="text-center mt-2">
-                 <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    Gemini may display inaccurate info, including about people, so double-check its responses.
-                 </p>
-              </div>
-           </div>
+              <textarea
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask Gemini"
+                className="flex-1 max-h-[150px] py-2.5 bg-transparent border-none outline-none resize-none text-gray-800 dark:text-gray-100 placeholder-gray-500 leading-6"
+                rows={1}
+              />
+
+              {input.trim() || attachments.length > 0 ? (
+                <button
+                  onClick={handleSendMessage}
+                  disabled={isGenerating}
+                  className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleMicClick}
+                  className={`p-2.5 rounded-full transition-all duration-200 shrink-0 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-[#333]'}`}
+                >
+                  {isRecording ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
+              )}
+            </div>
+            <div className="text-center mt-2">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                Gemini may display inaccurate info, including about people, so double-check its responses.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
+      <SettingsModal
+        isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={setSettings}
