@@ -78,7 +78,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
             >
               <div className="flex gap-3">
                 <div className={`mt-1 ${currentMode === 'fast' ? 'text-blue-600' : 'text-gray-500'}`}>
-                    <Zap className="w-5 h-5" />
+                  <Zap className="w-5 h-5" />
                 </div>
                 <div>
                   <div className={`font-medium ${currentMode === 'fast' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
@@ -103,7 +103,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
             >
               <div className="flex gap-3">
                 <div className={`mt-1 ${currentMode === 'thinking' ? 'text-blue-600' : 'text-gray-500'}`}>
-                    <Brain className="w-5 h-5" />
+                  <Brain className="w-5 h-5" />
                 </div>
                 <div>
                   <div className={`font-medium ${currentMode === 'thinking' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
@@ -128,7 +128,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
             >
               <div className="flex gap-3">
                 <div className={`mt-1 ${currentMode === 'pro' ? 'text-blue-600' : 'text-gray-500'}`}>
-                    <Sparkles className="w-5 h-5" />
+                  <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
                   <div className={`font-medium ${currentMode === 'pro' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>

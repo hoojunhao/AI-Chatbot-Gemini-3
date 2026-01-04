@@ -8,7 +8,8 @@ import {
   Sparkles,
   Paperclip,
   X,
-  Compass
+  Compass,
+  LogOut
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
@@ -17,14 +18,16 @@ import MarkdownRenderer from './MarkdownRenderer';
 import { generateResponseStream } from '../services/geminiService';
 import { AppSettings, ChatSession, Message, ModelType } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
+import { SettingsService } from '../services/settingsService';
 
 // Safely retrieve API Key
 const getApiKey = () => {
-  // in Vite, process.env.API_KEY is replaced by the actual value string during build/serve
-  return process.env.API_KEY || '';
+  return import.meta.env.VITE_GEMINI_API_KEY || '';
 };
 
 function App() {
+  const { user, signOut } = useAuth();
   // Initialize sidebar state based on screen size
   // Closed by default on mobile (< 768px), Open on desktop
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -49,6 +52,27 @@ function App() {
   });
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+
+  // Load settings from Supabase on login
+  useEffect(() => {
+    if (user) {
+      SettingsService.fetchSettings(user.id).then(savedSettings => {
+        if (savedSettings) {
+          setSettings(savedSettings);
+        }
+      });
+    }
+  }, [user]);
+
+  const handleUpdateSettings = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    if (user) {
+      // Fire and forget update
+      SettingsService.updateSettings(user.id, newSettings).catch(err =>
+        console.error("Failed to save settings:", err)
+      );
+    }
+  };
 
   // Chat State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -422,10 +446,21 @@ function App() {
             <Menu className="w-5 h-5" />
           </button>
 
+
           <ModelSelector
             settings={settings}
-            onUpdateSettings={setSettings}
+            onUpdateSettings={handleUpdateSettings}
           />
+
+          <div className="ml-auto">
+            <button
+              onClick={() => signOut()}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-gray-500"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Chat Area */}
@@ -607,7 +642,7 @@ function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onUpdateSettings={setSettings}
+        onUpdateSettings={handleUpdateSettings}
       />
     </div>
   );

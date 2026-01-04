@@ -22,9 +22,9 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      // Ensure we handle missing keys gracefully to avoid "undefined" replacement
-      'process.env.API_KEY': JSON.stringify(apiKey || ''),
-      'process.env.GEMINI_API_KEY': JSON.stringify(apiKey || '')
+      // Ensure we handle missing keys gracefully
+      // (Optional) If you still have other process.env usages, keep them, otherwise this can be removed or minimized.
+      // For now, we'll leaving it empty or just removing the API_KEYs.
     },
     resolve: {
       alias: {
