@@ -20,6 +20,7 @@ import { AppSettings, ChatSession, Message, ModelType } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { SettingsService } from '../services/settingsService';
+import { ChatService } from '../services/chatService';
 
 // Safely retrieve API Key
 const getApiKey = () => {
@@ -104,25 +105,28 @@ function App() {
 
   // Initialize Sessions
   useEffect(() => {
-    // Load from local storage or create new
-    const savedSessions = localStorage.getItem('gemini_sessions');
-    if (savedSessions) {
-      const parsedSessions = JSON.parse(savedSessions);
-      setSessions(parsedSessions);
-      // If we have sessions but no current one selected (e.g. reload), select the first one
-      if (parsedSessions.length > 0) {
-        setCurrentSessionId(parsedSessions[0].id);
-      } else {
-        createNewSession();
-      }
+    if (user) {
+      ChatService.fetchSessions(user.id)
+        .then(fetchedSessions => {
+          setSessions(fetchedSessions);
+          if (fetchedSessions.length > 0 && !currentSessionId) {
+            setCurrentSessionId(fetchedSessions[0].id);
+          } else if (fetchedSessions.length === 0) {
+            // Don't auto-create here to avoid empty sessions spam, 
+            // or create one if you want a blank slate start.
+            // Let's create a memory-only empty state or prompt user to start.
+            // For now, let's just clear sessions.
+          }
+        })
+        .catch(err => console.error("Failed to load sessions:", err));
     } else {
-      createNewSession();
+      setSessions([]);
+      setCurrentSessionId(null);
     }
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
-    localStorage.setItem('gemini_sessions', JSON.stringify(sessions));
-  }, [sessions]);
+  // Removed localStorage sync effects
+
 
   // Handle Theme Side Effects
   useEffect(() => {
@@ -172,20 +176,27 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const createNewSession = () => {
-    const newSession: ChatSession = {
-      id: Date.now().toString(),
-      title: 'New Chat',
-      messages: [],
-      updatedAt: Date.now(),
-      isPinned: false
-    };
-    setSessions(prev => [newSession, ...prev]);
-    setCurrentSessionId(newSession.id);
-    setInput('');
-    setAttachments([]);
-    // Close sidebar on mobile
-    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  const createNewSession = async () => {
+    if (!user) return;
+
+    try {
+      const id = await ChatService.createSession(user.id, 'New Chat');
+      const newSession: ChatSession = {
+        id,
+        title: 'New Chat',
+        messages: [],
+        updatedAt: Date.now(),
+        isPinned: false
+      };
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      setInput('');
+      setAttachments([]);
+      // Close sidebar on mobile
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
   };
 
   const deleteSession = (id: string) => {
@@ -193,34 +204,60 @@ function App() {
     if (currentSessionId === id) {
       setCurrentSessionId(null);
     }
+    ChatService.deleteSession(id).catch(err => console.error("Failed to delete session", err));
   };
 
   const togglePinSession = (id: string) => {
-    setSessions(prev => prev.map(s =>
-      s.id === id ? { ...s, isPinned: !s.isPinned } : s
-    ));
+    setSessions(prev => {
+      const session = prev.find(s => s.id === id);
+      if (session) {
+        ChatService.updateSession(id, { is_pinned: !session.isPinned })
+          .catch(err => console.error("Failed to pin session", err));
+      }
+      return prev.map(s =>
+        s.id === id ? { ...s, isPinned: !s.isPinned } : s
+      );
+    });
   };
 
   const renameSession = (id: string, newTitle: string) => {
     setSessions(prev => prev.map(s =>
       s.id === id ? { ...s, title: newTitle } : s
     ));
+    ChatService.updateSession(id, { title: newTitle })
+      .catch(err => console.error("Failed to rename session", err));
   };
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
   const handleSendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isGenerating) return;
+    if (!user) return;
 
     let activeSessionId = currentSessionId;
 
     // If no session is active (e.g. after delete), create one now
     if (!activeSessionId) {
-      activeSessionId = Date.now().toString();
-      setCurrentSessionId(activeSessionId);
+      try {
+        activeSessionId = await ChatService.createSession(user.id, input.slice(0, 30) || 'New Chat');
+        setCurrentSessionId(activeSessionId);
+
+        const newSession: ChatSession = {
+          id: activeSessionId,
+          title: input.slice(0, 30) || 'New Chat',
+          messages: [],
+          updatedAt: Date.now(),
+          isPinned: false
+        };
+        setSessions(prev => [newSession, ...prev]);
+
+      } catch (error) {
+        console.error("Failed to create session", error);
+        return;
+      }
     }
 
-    const userMsgId = Date.now().toString();
+    const userMsgId = Date.now().toString(); // Optimistic ID
     const userMessage: Message = {
       id: userMsgId,
       role: 'user',
@@ -229,32 +266,23 @@ function App() {
       attachments: attachments.length > 0 ? attachments : undefined
     };
 
-    // Optimistic Update: Add message to session, creating session if needed in state
+    // Optimistic Update
     setSessions(prev => {
-      const existingSession = prev.find(s => s.id === activeSessionId);
-
-      if (!existingSession) {
-        const newSession: ChatSession = {
-          id: activeSessionId!,
-          title: input.slice(0, 30) || 'New Conversation',
-          messages: [userMessage],
-          updatedAt: Date.now(),
-          isPinned: false
-        };
-        return [newSession, ...prev];
-      } else {
-        return prev.map(s => {
-          if (s.id === activeSessionId) {
-            return {
-              ...s,
-              messages: [...s.messages, userMessage],
-              title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title
-            };
-          }
-          return s;
-        });
-      }
+      return prev.map(s => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            messages: [...s.messages, userMessage],
+            title: s.messages.length === 0 ? (input.slice(0, 30) || 'New Conversation') : s.title,
+            updatedAt: Date.now()
+          };
+        }
+        return s;
+      });
     });
+
+    const currentInput = input;
+    const currentAttachments = [...attachments]; // Copy for async usage
 
     setInput('');
     setAttachments([]);
@@ -278,20 +306,33 @@ function App() {
       return s;
     }));
 
+    // Persist User Message
+    ChatService.saveMessage(activeSessionId, 'user', currentInput, currentAttachments.length > 0 ? currentAttachments : undefined)
+      .catch(err => console.error("Failed to save user message", err));
+
     try {
       const apiKey = getApiKey();
       if (!apiKey) throw new Error("API Key not found. Please ensure process.env.API_KEY is set.");
 
-      // Get history. If it's a new session, history is empty (correct). 
-      // If existing, it has previous messages.
-      const history = sessions.find(s => s.id === activeSessionId)?.messages || [];
+      const session = sessions.find(s => s.id === activeSessionId);
+      const existingMessages = session ? session.messages : [];
+      const history = existingMessages;
 
       const stream = generateResponseStream(
         apiKey,
         settings,
-        history,
-        userMessage.text,
-        userMessage.attachments
+        history, // Pass history including the new user message (though generateResponseStream might append it again? No, checks logic)
+        // services/geminiService.ts: logic is: 
+        // 1. takes history (Message[])
+        // 2. filters history
+        // 3. appends `newMessage` (string).
+        // Be careful not to duplicate.
+        // `generateResponseStream` signature: (apiKey, settings, history, newMessage, attachments)
+        // The `history` param should NOT include the `newMessage`.
+        // existingMessages does NOT include userMessage yet (from render scope).
+        // So passing `existingMessages` (which is previous history) + `userMessage.text` is correct.
+        currentInput,
+        currentAttachments
       );
 
       let fullResponse = '';
@@ -311,6 +352,15 @@ function App() {
         }));
       }
 
+      // Persist Model Message
+      if (activeSessionId) {
+        ChatService.saveMessage(activeSessionId, 'model', fullResponse)
+          .catch(err => console.error("Failed to save model message", err));
+
+        // Also update session title if it was new (handled by renaming? No, backend auto-updates title? No, we set title in CreateSession)
+        // If we want dynamic title generation, that's a separate feature.
+      }
+
     } catch (error) {
       console.error("Error generating response:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -327,6 +377,13 @@ function App() {
         }
         return s;
       }));
+
+      // Persist Error Message (optional)
+      if (activeSessionId) {
+        ChatService.saveMessage(activeSessionId, 'model', `Error: ${errorMessage}`, undefined, true)
+          .catch(err => console.error("Failed to save error message", err));
+      }
+
     } finally {
       setIsGenerating(false);
       scrollToBottom();

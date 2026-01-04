@@ -25,6 +25,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+
+            // Clean up hash after initial OAuth redirect
+            if (session && window.location.hash) {
+                setTimeout(() => {
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                }, 100);
+            }
         });
 
         // Listen for auth state changes
@@ -33,17 +40,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(session?.user ?? null);
             setLoading(false);
 
-            // Clear the hash from the URL if it contains access_token from Supabase
-            if (session && window.location.hash && window.location.hash.includes('access_token')) {
-                window.history.replaceState(null, '', window.location.pathname);
-            } else if (session && window.location.hash === '#') {
-                // Also clear empty hash
-                window.history.replaceState(null, '', window.location.pathname);
+            // Cleanup hash after Supabase processes OAuth tokens
+            if (session) {
+                // Small delay to ensure Supabase has finished processing
+                setTimeout(() => {
+                    if (window.location.hash) {
+                        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                    }
+                }, 100);
             }
         });
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // Clean up hash after Supabase processes OAuth tokens
+    useEffect(() => {
+        const cleanupHash = () => {
+            const hash = window.location.hash;
+            const hasTrailingHash = window.location.href.endsWith('#');
+
+            // Remove trailing # or non-auth hashes
+            if (hasTrailingHash && !hash) {
+                window.history.replaceState(null, '', window.location.href.slice(0, -1));
+            } else if (hash && !hash.includes('access_token') && !hash.includes('refresh_token')) {
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+        };
+
+        // Run cleanup after a delay to catch leftover hash
+        const timeoutId = setTimeout(cleanupHash, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [session]);
 
     const signUp = async (email: string, password: string, fullName: string) => {
         const { error } = await supabase.auth.signUp({
@@ -75,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/`,
+                redirectTo: window.location.origin,
             },
         });
         if (error) throw error;
