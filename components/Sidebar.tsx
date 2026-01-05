@@ -10,7 +10,10 @@ import {
   Sun,
   Pin,
   Pencil,
-  LogIn
+  LogIn,
+  SquarePen,
+  MoreVertical,
+  Share2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
   const filteredSessions = sessions.filter(s =>
@@ -56,6 +60,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
     setEditingSessionId(null);
   };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSaveEdit();
@@ -79,8 +90,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         if (window.innerWidth < 768) toggleSidebar();
       }}
     >
-      <MessageSquare className="w-4 h-4 shrink-0 text-gray-500" />
-
       {editingSessionId === session.id ? (
         <input
           autoFocus
@@ -96,40 +105,69 @@ const Sidebar: React.FC<SidebarProps> = ({
         <span className="flex-1 truncate">{session.title}</span>
       )}
 
-      <div className={`flex items-center gap-1 ${session.isPinned || editingSessionId === session.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+      <div className={`flex items-center gap-1 ${editingSessionId === session.id ? 'opacity-100' : session.isPinned && openMenuId !== session.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity relative`}>
         {!editingSessionId && (
           <>
-            <button
-              onClick={(e) => handleStartEdit(session, e)}
-              className="p-1 hover:bg-gray-300 dark:hover:bg-[#444] rounded-full text-gray-500"
-              title="Rename chat"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const willPin = !session.isPinned;
-                onTogglePinSession(session.id);
-                if (willPin) {
-                  handleStartEdit(session, null);
-                }
-              }}
-              className={`p-1 hover:bg-gray-300 dark:hover:bg-[#444] rounded-full ${session.isPinned ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500'}`}
-              title={session.isPinned ? "Unpin chat" : "Pin chat"}
-            >
-              <Pin className={`w-3 h-3 ${session.isPinned ? 'fill-current' : ''}`} />
-            </button>
+            {/* Pin icon - show when pinned and not hovering/menu closed */}
+            {session.isPinned && openMenuId !== session.id && (
+              <div className="p-1 group-hover:hidden">
+                <Pin className="w-4 h-4 text-gray-500 fill-current" />
+              </div>
+            )}
+
+            {/* 3-dots button - hidden when pinned and not hovering */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDeleteSession(session.id);
+                setOpenMenuId(openMenuId === session.id ? null : session.id);
               }}
-              className="p-1 hover:bg-gray-300 dark:hover:bg-[#444] rounded-full"
-              title="Delete chat"
+              className={`p-1 hover:bg-gray-300 dark:hover:bg-[#444] rounded-full text-gray-500 transition-colors ${session.isPinned && openMenuId !== session.id ? 'hidden group-hover:block' : ''}`}
             >
-              <Trash2 className="w-3 h-3 text-gray-500" />
+              <MoreVertical className="w-4 h-4" />
             </button>
+
+            {openMenuId === session.id && (
+              <div
+                className="absolute right-0 top-8 z-50 w-32 bg-[#eef3f8] dark:bg-[#2e2f31] rounded-lg shadow-lg py-1 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const willPin = !session.isPinned;
+                    onTogglePinSession(session.id);
+                    setOpenMenuId(null);
+                    if (willPin) {
+                      handleStartEdit(session, e);
+                    }
+                  }}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-[#dde3ea] dark:hover:bg-[#3c3d3f] w-full text-left"
+                >
+                  <Pin className={`w-4 h-4 ${session.isPinned ? 'fill-current' : ''}`} />
+                  {session.isPinned ? "Unpin" : "Pin"}
+                </button>
+                <button
+                  onClick={(e) => {
+                    handleStartEdit(session, e);
+                    setOpenMenuId(null);
+                  }}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-[#dde3ea] dark:hover:bg-[#3c3d3f] w-full text-left"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Rename
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSession(session.id);
+                  }}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-[#dde3ea] dark:hover:bg-[#3c3d3f] w-full text-left"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -150,46 +188,54 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className={`
         fixed md:static inset-y-0 left-0 z-50
         flex flex-col
-        w-80 h-full
+        ${isOpen ? 'w-[300px] translate-x-0' : '-translate-x-full md:translate-x-0 md:w-[72px]'}
+        h-full
         bg-[#f0f4f9] dark:bg-[#1e1f20]
-        transform transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:hidden'}
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4">
+        <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-3`}>
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full transition-colors md:hidden"
           >
             <Menu className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
-          <div className="flex-1 md:ml-2">
-            <span className="font-medium text-gray-600 dark:text-gray-300 text-sm tracking-wide">GEMINI</span>
+
+          {isOpen && (
+            <div className="flex-1 md:ml-2 md:hidden">
+              <span className="font-medium text-gray-600 dark:text-gray-300 text-sm tracking-wide">GEMINI</span>
+            </div>
+          )}
+
+          <div className="hidden md:block">
+            <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
+              <Menu className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
         {/* New Chat Button */}
-        <div className="px-4 mb-4">
+        <div className={`px-4 mb-4 ${!isOpen ? 'flex justify-center px-2' : ''}`}>
           <button
             onClick={() => {
               onNewChat();
               if (window.innerWidth < 768) toggleSidebar();
             }}
-            className="
-              flex items-center gap-3 w-full p-3 
-              bg-[#dfe4ea] dark:bg-[#333537] 
-              hover:bg-[#d0d6dd] dark:hover:bg-[#434547]
-              rounded-full transition-all duration-200
-              text-gray-600 dark:text-gray-200 font-medium text-sm
-            "
+            className={`
+              flex items-center gap-3
+              ${isOpen ? 'w-full px-3 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200' : 'p-3 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
+              transition-colors
+              font-medium text-sm
+            `}
+            title={!isOpen ? "New chat" : undefined}
           >
-            <Plus className="w-5 h-5" />
-            <span className="flex-1 text-left">New chat</span>
+            <SquarePen className="w-5 h-5" />
+            {isOpen && <span className="flex-1 text-left">New chat</span>}
           </button>
         </div>
 
         {/* Search - Only for logged in users */}
-        {user && (
+        {user && isOpen && (
           <div className="px-4 mb-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -206,16 +252,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Sessions List or Guest Promo */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          {user ? (
+          {user && isOpen ? (
             <>
-              {pinnedSessions.length > 0 && (
-                <>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 mt-2">Pinned</div>
-                  {pinnedSessions.map(renderSessionRow)}
-                </>
-              )}
-
-              <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 mt-2">Recent</div>
+              <div className="px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mt-2">Chats</div>
+              {pinnedSessions.map(renderSessionRow)}
               {unpinnedSessions.map(renderSessionRow)}
 
               {filteredSessions.length === 0 && (
@@ -223,45 +263,52 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </>
           ) : (
-            <div className="mx-2 mt-4 p-4 bg-[#e7ebf0] dark:bg-[#282a2c] rounded-2xl">
-              <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2">Sign in to start saving your chats</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
-                Once you're signed in, you can access your recent chats here.
-              </p>
-              <button
-                onClick={() => navigate('/auth')}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Sign in
-              </button>
-            </div>
+            isOpen && (
+              <div className="mx-2 mt-4 p-4 bg-[#e7ebf0] dark:bg-[#282a2c] rounded-2xl">
+                <h3 className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2">Sign in to start saving your chats</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+                  Once you're signed in, you can access your recent chats here.
+                </p>
+                <button
+                  onClick={() => navigate('/auth')}
+                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Sign in
+                </button>
+              </div>
+            )
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="p-2 mt-auto border-t border-gray-200 dark:border-[#333]">
+        <div className={`p-2 mt-auto border-t border-gray-200 dark:border-[#333] ${!isOpen ? 'flex flex-col items-center' : ''}`}>
           {user && (
             <button
               onClick={onOpenSettings}
-              className="flex items-center gap-3 w-full p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors"
+              className={`flex items-center gap-3 ${isOpen ? 'w-full' : 'justify-center'} p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors`}
+              title={!isOpen ? "Settings" : undefined}
             >
               <Settings className="w-5 h-5 text-gray-500" />
-              <span>Settings</span>
+              {isOpen && <span>Settings</span>}
             </button>
           )}
 
-          <button
-            onClick={toggleTheme}
-            className="flex items-center gap-3 w-full p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5 text-gray-500" /> : <Moon className="w-5 h-5 text-gray-500" />}
-            <span>{isDarkMode ? 'Light theme' : 'Dark theme'}</span>
-          </button>
+          {isOpen && (
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 w-full p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors"
+            >
+              {isDarkMode ? <Sun className="w-5 h-5 text-gray-500" /> : <Moon className="w-5 h-5 text-gray-500" />}
+              <span>{isDarkMode ? 'Light theme' : 'Dark theme'}</span>
+            </button>
+          )}
 
-          <div className="flex items-center gap-2 mt-2 px-3 py-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-            <span className="text-xs text-gray-500">{location}</span>
-          </div>
+          {isOpen && (
+            <div className="flex items-center gap-2 mt-2 px-3 py-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <span className="text-xs text-gray-500">{location}</span>
+            </div>
+          )}
         </div>
       </div>
     </>

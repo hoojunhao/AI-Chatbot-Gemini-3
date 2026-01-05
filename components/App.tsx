@@ -478,15 +478,12 @@ function GeminiChat() {
       <div className="flex-1 flex flex-col relative h-full w-full">
         {/* Top Header */}
         <div className="flex items-center p-3 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-gray-500">
-            <Menu className="w-5 h-5" />
-          </button>
 
 
-          <ModelSelector
-            settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-          />
+          <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
+
+
+
 
           <div className="ml-auto">
             {user ? (
@@ -571,25 +568,27 @@ function GeminiChat() {
                       </div>
                     )}
 
-                    <div className={`
-                            relative px-5 py-3.5 rounded-2xl text-[15px] leading-7
-                            ${msg.role === 'user'
-                        ? 'bg-[#f0f4f9] dark:bg-[#333537] text-gray-800 dark:text-gray-100 rounded-tr-sm'
-                        : 'text-gray-800 dark:text-gray-100 w-full'
-                      }
-                        `}>
-                      {msg.role === 'model' ? (
-                        msg.text ? <MarkdownRenderer content={msg.text} /> : (
-                          <div className="flex gap-1 items-center h-6">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                          </div>
-                        )
-                      ) : (
-                        <div className="whitespace-pre-wrap">{msg.text}</div>
-                      )}
-                    </div>
+                    {msg.text && (
+                      <div className={`
+                              relative px-5 py-3.5 rounded-2xl text-[15px] leading-7
+                              ${msg.role === 'user'
+                          ? 'bg-[#f0f4f9] dark:bg-[#333537] text-gray-800 dark:text-gray-100 rounded-tr-sm'
+                          : 'text-gray-800 dark:text-gray-100 w-full'
+                        }
+                          `}>
+                        {msg.role === 'model' ? (
+                          msg.text ? <MarkdownRenderer content={msg.text} /> : (
+                            <div className="flex gap-1 items-center h-6">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                              <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+                          )
+                        ) : (
+                          <div className="whitespace-pre-wrap">{msg.text}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -624,7 +623,53 @@ function GeminiChat() {
               </div>
             )}
 
-            <div className={`
+            <div
+              onPaste={(e) => {
+                const items = e.clipboardData.items;
+                Array.from(items).forEach(item => {
+                  if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const base64String = (reader.result as string).split(',')[1];
+                        setAttachments(prev => [...prev, {
+                          mimeType: file.type,
+                          data: base64String,
+                          name: file.name
+                        }]);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }
+                });
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                  Array.from(files).forEach((file: File) => {
+                    if (file.type.startsWith('image/')) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const base64String = (reader.result as string).split(',')[1];
+                        setAttachments(prev => [...prev, {
+                          mimeType: file.type,
+                          data: base64String,
+                          name: file.name
+                        }]);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  });
+                }
+              }}
+              className={`
                  flex items-end gap-2 p-2 rounded-[28px] border transition-colors
                  ${isGenerating ? 'bg-gray-50 dark:bg-[#1e1f20] border-gray-200 dark:border-[#333]' : 'bg-[#f0f4f9] dark:bg-[#1e1f20] border-transparent focus-within:bg-white dark:focus-within:bg-[#1e1f20] focus-within:border-gray-300 dark:focus-within:border-[#444]'}
               `}>
@@ -656,6 +701,14 @@ function GeminiChat() {
                 className="flex-1 max-h-[150px] py-2.5 bg-transparent border-none outline-none resize-none text-gray-800 dark:text-gray-100 placeholder-gray-500 leading-6"
                 rows={1}
               />
+
+
+              <div className="flex items-center mr-2">
+                <ModelSelector
+                  settings={settings}
+                  onUpdateSettings={handleUpdateSettings}
+                />
+              </div>
 
               {input.trim() || attachments.length > 0 ? (
                 <button

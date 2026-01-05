@@ -44,5 +44,4 @@ Today was a highly productive session focused on stabilizing the core architectu
 - Manual testing of all flows.
 - Potential future enhancements:
   - Migrate guest chat to persistent account upon sign-in.
-  - Implement "Settings" persistence.
   - Advanced message types (Markdown processing improvements).

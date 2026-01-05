@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, Zap, Brain, Sparkles } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 import { AppSettings, ModelType } from '../types';
 
 interface ModelSelectorProps {
@@ -54,43 +54,38 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
     <div className="relative inline-block text-left z-20" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#2a2b2d] text-gray-600 dark:text-gray-300 transition-colors"
+        className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 dark:bg-[#1e1f20] hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-700 dark:text-gray-300 transition-colors"
       >
-        <span className="text-lg font-medium text-gray-600 dark:text-gray-200">
-          {currentMode === 'fast' && 'Gemini 3 Flash'}
-          {currentMode === 'thinking' && 'Gemini 3 Thinking'}
-          {currentMode === 'pro' && 'Gemini 3 Pro'}
+        <span className="text-sm font-medium">
+          {currentMode === 'fast' && 'Fast'}
+          {currentMode === 'thinking' && 'Thinking'}
+          {currentMode === 'pro' && 'Pro'}
         </span>
-        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-[320px] bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-2xl shadow-xl border border-white/20 dark:border-black/10 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-left">
-          <div className="p-2 space-y-1">
-            <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Model Selection
+        <div className="absolute bottom-full mb-2 right-0 w-60 bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-2xl shadow-xl border border-white/20 dark:border-black/10 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-bottom-right">
+          <div className="p-1.5 space-y-0.5">
+            <div className="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+              Gemini 3
             </div>
 
             {/* Fast Option */}
             <button
               onClick={() => handleSelectMode('fast')}
-              className="w-full text-left p-3 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-start justify-between group"
+              className="w-full text-left p-2 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-center justify-between group"
             >
-              <div className="flex gap-3">
-                <div className={`mt-1 ${currentMode === 'fast' ? 'text-blue-600' : 'text-gray-500'}`}>
-                  <Zap className="w-5 h-5" />
+              <div>
+                <div className={`text-sm font-medium ${currentMode === 'fast' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                  Fast
                 </div>
-                <div>
-                  <div className={`font-medium ${currentMode === 'fast' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                    Fast
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Answers quickly
-                  </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Answers quickly
                 </div>
               </div>
               {currentMode === 'fast' && (
-                <div className="bg-blue-600 rounded-full p-1 mt-1">
+                <div className="bg-blue-600 rounded-full p-0.5">
                   <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
               )}
@@ -99,23 +94,18 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
             {/* Thinking Option */}
             <button
               onClick={() => handleSelectMode('thinking')}
-              className="w-full text-left p-3 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-start justify-between group"
+              className="w-full text-left p-2 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-center justify-between group"
             >
-              <div className="flex gap-3">
-                <div className={`mt-1 ${currentMode === 'thinking' ? 'text-blue-600' : 'text-gray-500'}`}>
-                  <Brain className="w-5 h-5" />
+              <div>
+                <div className={`text-sm font-medium ${currentMode === 'thinking' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                  Thinking
                 </div>
-                <div>
-                  <div className={`font-medium ${currentMode === 'thinking' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                    Thinking
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Solves complex problems
-                  </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Solves complex problems
                 </div>
               </div>
               {currentMode === 'thinking' && (
-                <div className="bg-blue-600 rounded-full p-1 mt-1">
+                <div className="bg-blue-600 rounded-full p-0.5">
                   <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
               )}
@@ -124,23 +114,18 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ settings, onUpdateSetting
             {/* Pro Option */}
             <button
               onClick={() => handleSelectMode('pro')}
-              className="w-full text-left p-3 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-start justify-between group"
+              className="w-full text-left p-2 rounded-xl hover:bg-white dark:hover:bg-[#333] transition-colors flex items-center justify-between group"
             >
-              <div className="flex gap-3">
-                <div className={`mt-1 ${currentMode === 'pro' ? 'text-blue-600' : 'text-gray-500'}`}>
-                  <Sparkles className="w-5 h-5" />
+              <div>
+                <div className={`text-sm font-medium ${currentMode === 'pro' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                  Pro
                 </div>
-                <div>
-                  <div className={`font-medium ${currentMode === 'pro' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                    Pro
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Thinks longer for advanced math & code
-                  </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Thinks longer for advanced math & code
                 </div>
               </div>
               {currentMode === 'pro' && (
-                <div className="bg-blue-600 rounded-full p-1 mt-1">
+                <div className="bg-blue-600 rounded-full p-0.5">
                   <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
               )}
