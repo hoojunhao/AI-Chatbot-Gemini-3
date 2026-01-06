@@ -545,7 +545,7 @@ function GeminiChat() {
               </div>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto w-full pb-32 pt-8 px-4">
+            <div className="max-w-5xl mx-auto w-full pb-32 pt-8 px-4">
               {currentSession.messages.map((msg, idx) => (
                 <ChatMessage key={msg.id} message={msg} />
               ))}

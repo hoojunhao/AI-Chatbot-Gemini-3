@@ -28,7 +28,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     if (message.role === 'user') {
         return (
             <div className="flex gap-4 mb-8 justify-end">
-                <div className="flex flex-col max-w-[85%] md:max-w-[75%] items-end">
+                <div className="flex flex-col max-w-[85%] md:max-w-[85%] items-end">
                     {message.attachments && message.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2">
                             {message.attachments.map((att, i) => (
@@ -64,7 +64,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 <Sparkles className="w-5 h-5 text-white" />
             </div>
 
-            <div className="flex flex-col max-w-[85%] md:max-w-[75%] items-start w-full">
+            <div className="flex flex-col max-w-[85%] md:max-w-[85%] items-start w-full">
                 {thinkingContent && (
                     <div className="mb-2 w-full">
                         <button
