@@ -38,10 +38,24 @@ function GeminiChat() {
   // Initialize sidebar state based on screen size
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768;
+      return window.innerWidth >= 1000;
     }
     return true;
   });
+
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      // Only auto-collapse when window becomes narrow
+      if (window.innerWidth < 1000) {
+        setIsSidebarOpen(false);
+      }
+      // Don't auto-expand when window becomes wide - let user control it
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -180,7 +194,6 @@ function GeminiChat() {
     navigate('/app');
     setInput('');
     setAttachments([]);
-    if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
   const deleteSession = (id: string) => {

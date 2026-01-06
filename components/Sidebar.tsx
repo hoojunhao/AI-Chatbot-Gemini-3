@@ -85,10 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           : 'hover:bg-gray-200 dark:hover:bg-[#333]'
         }
       `}
-      onClick={() => {
-        onSelectSession(session.id);
-        if (window.innerWidth < 768) toggleSidebar();
-      }}
+      onClick={() => onSelectSession(session.id)}
     >
       {editingSessionId === session.id ? (
         <input
@@ -176,51 +173,26 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={toggleSidebar}
-        />
-      )}
-
-      {/* Sidebar Container */}
+      {/* Sidebar Container - Always visible, responsive width */}
       <div className={`
-        fixed md:static inset-y-0 left-0 z-50
         flex flex-col
-        ${isOpen ? 'w-[300px] translate-x-0' : '-translate-x-full md:translate-x-0 md:w-[72px]'}
+        ${isOpen ? 'w-[306px]' : 'w-[72px]'}
         h-full
         bg-[#f0f4f9] dark:bg-[#1e1f20]
+        transition-all duration-300
       `}>
         {/* Header */}
         <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-3`}>
-          <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full transition-colors md:hidden"
-          >
-            <Menu className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+
+          <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
+            <Menu className="w-5 h-5" />
           </button>
-
-          {isOpen && (
-            <div className="flex-1 md:ml-2 md:hidden">
-              <span className="font-medium text-gray-600 dark:text-gray-300 text-sm tracking-wide">GEMINI</span>
-            </div>
-          )}
-
-          <div className="hidden md:block">
-            <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
         </div>
 
         {/* New Chat Button */}
         <div className={`px-4 mb-4 ${!isOpen ? 'flex justify-center px-2' : ''}`}>
           <button
-            onClick={() => {
-              onNewChat();
-              if (window.innerWidth < 768) toggleSidebar();
-            }}
+            onClick={onNewChat}
             className={`
               flex items-center gap-3
               ${isOpen ? 'w-full px-3 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200' : 'p-3 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
