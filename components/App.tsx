@@ -24,6 +24,7 @@ import { DEFAULT_SETTINGS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { SettingsService } from '../services/settingsService';
 import { ChatService } from '../services/chatService';
+import ChatMessage from './ChatMessage';
 
 // Safely retrieve API Key
 const getApiKey = () => {
@@ -243,12 +244,7 @@ function GeminiChat() {
         } else {
           // Guest: Generate a random local ID
           activeSessionId = Date.now().toString();
-          // Don't navigate to /app/id for guest to avoid confusion? Or do we?
-          // If we don't navigate, URL stays /app. That's fine for ephemeral.
-          // But if they refresh, it's gone.
-          // Let's keep it simple: URL stays /app for guest. 
-          // Actually, if we use navigate, we might imply persistence.
-          // Let's NOT navigate for guest.
+          setCurrentSessionId(activeSessionId);
         }
 
         const newSession: ChatSession = {
@@ -551,59 +547,7 @@ function GeminiChat() {
           ) : (
             <div className="max-w-4xl mx-auto w-full pb-32 pt-8 px-4">
               {currentSession.messages.map((msg, idx) => (
-                <div key={msg.id} className={`flex gap-4 mb-8 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-
-                  {msg.role === 'model' && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-red-500 flex items-center justify-center shrink-0 mt-1">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
-                  )}
-
-                  <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    {/* Attachments Display */}
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {msg.attachments.map((att, i) => (
-                          <div key={i} className="relative group">
-                            {att.mimeType.startsWith('image/') ? (
-                              <img
-                                src={`data:${att.mimeType};base64,${att.data}`}
-                                alt="attachment"
-                                className="h-32 w-auto rounded-lg border border-gray-200 dark:border-[#444] object-cover"
-                              />
-                            ) : (
-                              <div className="h-16 w-32 bg-gray-100 dark:bg-[#333] rounded-lg flex items-center justify-center text-xs text-gray-500">
-                                Audio/File
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {msg.text && (
-                      <div className={`
-                              relative px-5 py-3.5 rounded-2xl text-[15px] leading-7
-                              ${msg.role === 'user'
-                          ? 'bg-[#f0f4f9] dark:bg-[#333537] text-gray-800 dark:text-gray-100 rounded-tr-sm'
-                          : 'text-gray-800 dark:text-gray-100 w-full'
-                        }
-                          `}>
-                        {msg.role === 'model' ? (
-                          msg.text ? <MarkdownRenderer content={msg.text} /> : (
-                            <div className="flex gap-1 items-center h-6">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                              <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                            </div>
-                          )
-                        ) : (
-                          <div className="whitespace-pre-wrap">{msg.text}</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ChatMessage key={msg.id} message={msg} />
               ))}
               <div ref={messagesEndRef} />
             </div>

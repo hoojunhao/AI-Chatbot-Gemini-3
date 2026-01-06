@@ -11,10 +11,10 @@ export const generateResponseStream = async function* (
   if (!apiKey) throw new Error("API Key is missing");
 
   const ai = new GoogleGenAI({ apiKey });
-  
+
   // Construct parts for the new message
   const parts: Part[] = [];
-  
+
   // Add attachments
   attachments.forEach(att => {
     parts.push({
@@ -30,16 +30,16 @@ export const generateResponseStream = async function* (
 
   // Construct history if memory is enabled
   let contents: Content[] = [];
-  
+
   if (settings.enableMemory) {
     contents = history
       .filter(msg => !msg.isError) // Do not include error messages in context
       .map(msg => ({
         role: msg.role,
-        parts: msg.attachments 
+        parts: msg.attachments
           ? [...msg.attachments.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.data } })), { text: msg.text }]
           : [{ text: msg.text }]
-    }));
+      }));
   }
 
   // Add the new message to contents
@@ -59,14 +59,10 @@ export const generateResponseStream = async function* (
 
   // Thinking configuration logic
   if (settings.model === ModelType.GEMINI_3_FLASH) {
-    if (settings.thinkingLevel === 'HIGH') {
-      // High thinking level: Set max budget for Flash
-      config.thinkingConfig = { thinkingBudget: 24576 };
-      config.maxOutputTokens = 32768; 
-    } else {
-      // Low thinking level: Disable thinking to ensure speed
-      config.thinkingConfig = { thinkingBudget: 0 };
-    }
+    config.thinkingConfig = {
+      includeThoughts: true,
+      thinkingLevel: settings.thinkingLevel === 'HIGH' ? "high" : "low"
+    };
   }
 
   try {
@@ -81,10 +77,33 @@ export const generateResponseStream = async function* (
     let hasYielded = false;
 
     for await (const chunk of responseStream) {
-      const text = chunk.text;
-      if (text) {
+      const parts = chunk.candidates?.[0]?.content?.parts;
+
+      if (parts) {
+        for (const part of parts) {
+          // Check for native thinking part
+          // @ts-ignore
+          if (part.thought) {
+            // @ts-ignore
+            const thoughtText = typeof part.thought === 'string' ? part.thought : part.text;
+            if (thoughtText) {
+              yield `<thinking>${thoughtText}</thinking>`;
+            }
+          } else if (part.text) {
+            yield part.text;
+          }
+        }
+      } else {
+        const text = chunk.text;
+        if (text) {
+          hasYielded = true;
+          yield text;
+        }
+      }
+
+      // Ensure we mark as yielded if we got parts
+      if (parts && parts.length > 0) {
         hasYielded = true;
-        yield text;
       }
     }
 
