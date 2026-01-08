@@ -53,5 +53,4 @@ export interface SidebarProps {
   onOpenSettings: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
-  location: string;
 }

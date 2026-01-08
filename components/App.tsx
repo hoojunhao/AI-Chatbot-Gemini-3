@@ -111,17 +111,6 @@ function GeminiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Location State
-  const [location, setLocation] = useState<string>(() => {
-    try {
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (timeZone) {
-        const city = timeZone.split('/')[1]?.replace(/_/g, ' ');
-        return city || 'Unknown Location';
-      }
-    } catch (e) { }
-    return 'Unknown Location';
-  });
 
   // Sync URL sessionId with state
   useEffect(() => {
@@ -160,32 +149,6 @@ function GeminiChat() {
     scrollToBottom();
   }, [currentSessionId, sessions]);
 
-  // Geolocation Effect
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
-            const data = await response.json();
-            const city = data.address.city || data.address.town || data.address.village || data.address.county;
-            const state = data.address.state;
-            if (city) {
-              setLocation(`${city}${state ? `, ${state}` : ''}`);
-            } else {
-              setLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
-            }
-          } catch (e) {
-            console.warn("Reverse geocoding failed", e);
-          }
-        },
-        (error) => {
-          console.warn("Geolocation denied or failed", error);
-        }
-      );
-    }
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -480,7 +443,6 @@ function GeminiChat() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         isDarkMode={isDarkMode}
         toggleTheme={() => setIsDarkMode(!isDarkMode)}
-        location={location}
       />
 
       {/* Main Content */}

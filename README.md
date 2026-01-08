@@ -1,66 +1,85 @@
-# Gemini Clone
+# ♊ Gemini Chat Clone
 
-A high-fidelity replica of the Google Gemini web interface, built with React 19, Tailwind CSS, and the Google GenAI SDK. This application mirrors the look and feel of the official Gemini web app while providing real functionality through the Gemini API.
+A high-fidelity, feature-complete replica of the Google Gemini web interface. This application is built with **React 19**, **Supabase**, and the **Google GenAI SDK**, providing a premium chat experience with real-time persistence and advanced AI capabilities.
 
-## Features
+---
 
-- **Model Selection**: Switch between Gemini 3 Flash, Gemini 3 Flash (Thinking Mode), and Gemini 3 Pro.
-- **Thinking Mode**: Enable "High" thinking levels for complex reasoning tasks using Gemini 3 Flash.
-- **Chat History**: Full sidebar functionality including creating new chats, renaming, pinning, deleting, and searching through history.
-- **Multimodal Inputs**:
-  - **Text**: Standard chat interface.
-  - **Images**: Drag and drop or upload images for analysis.
-  - **Voice (Dictation)**: Real-time speech-to-text input using the browser's Speech Recognition API.
-- **Customizable Settings**:
-  - System Instructions (System Prompts).
-  - Temperature control (Creativity vs. Determinism).
-  - Memory toggle (Context awareness).
-  - Granular Safety Filters (Hate speech, harassment, etc.).
-- **Theme Support**: Fully functional Dark and Light modes.
-- **Markdown Rendering**: Proper syntax highlighting for code blocks and standard markdown formatting.
+## 🚀 Features
 
-## Configuration
+### 🧠 Advanced AI Capabilities
+- **Model Selection**: Seamlessly switch between **Gemini 3 Flash**, **Gemini 3 Flash (Thinking Mode)**, and **Gemini 3 Pro**.
+- **Thinking Mode**: Experience advanced reasoning with "High" thinking levels enabled for complex problem-solving.
+- **System Instructions**: Define custom system prompts to guide the AI's personality and behavior.
+- **Granular Parameter Control**: Adjust temperature for creativity and configure safety filters for a tailored experience.
 
-### API Key
-The application requires a valid Google Gemini API key. This is expected to be available in the environment as `process.env.API_KEY`.
+### 💬 Rich Communication
+- **Multimodal Support**: Analyze images via drag-and-drop or file upload.
+- **Voice Dictation**: Built-in speech-to-text integration using the browser's Speech Recognition API.
+- **Markdown Rendering**: Beautiful rendering of chat messages, including syntax-highlighted code blocks, tables, and lists.
 
-### Permissions
-The app requests the following permissions to function fully:
-- **Microphone**: For recording audio inputs (Speech-to-Text).
-- **Geolocation**: For displaying the user's current city/location in the UI sidebar.
+### 🔐 Robust Infrastructure
+- **Full Authentication**: Secure sign-in and sign-up with Email or **Google OAuth** via Supabase.
+- **Cloud Persistence**: Your chat history, pinned conversations, and custom settings are saved and synced across devices.
+- **Responsive Design**: A premium, Gemini-inspired UI that works beautifully on desktops and tablets, featuring both **Dark and Light modes**.
 
-## Notes on Location
+---
 
-The application requests geolocation access to display your current city and state in the bottom left of the sidebar, mimicking the real Gemini interface.
+## 🛠️ Tech Stack
 
-**Please Note:** Currently, this location information is **purely visual**. It is displayed in the UI but is **not** sent to the Gemini model (via grounding or system context) in this version. The model is not aware of your location based on this feature.
+- **Frontend Core**: [React 19](https://react.dev/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Backend & Auth**: [Supabase](https://supabase.com/)
+- **AI Engine**: [Google Gemini (GenAI SDK)](https://ai.google.dev/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Routing**: [React Router 7](https://reactrouter.com/)
 
-## Project Structure
+---
 
-The project is organized to separate UI components, logic, and types for maintainability.
+## ⚙️ Getting Started
+
+### 1. Prerequisites
+- Node.js (v18+)
+- A Google AI Studio API Key (Get one at [aistudio.google.com](https://aistudio.google.com/))
+- A Supabase Project (Create one at [supabase.com](https://supabase.com/))
+
+### 2. Environment Variables
+Create a `.env.local` file in the root directory and add the following:
+
+```env
+VITE_GEMINI_API_KEY=your_gemini_api_key
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Installation
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+---
+
+## 📂 Project Structure
 
 ```text
 /
-├── components/
-│   ├── App.tsx              # Main application orchestrator, layout, and state management
-│   ├── MarkdownRenderer.tsx # Renders chat messages with Markdown support and syntax highlighting
-│   ├── ModelSelector.tsx    # Dropdown UI for switching between Flash, Thinking, and Pro models
-│   ├── SettingsModal.tsx    # Modal interface for user preferences (System prompts, safety, parameters)
-│   └── Sidebar.tsx          # Navigation sidebar handling chat history, new chats, and theme toggling
-├── services/
-│   └── geminiService.ts     # Wrapper for @google/genai SDK to handle streaming responses and API calls
-├── constants.ts             # Default configuration values (default model, safety settings, etc.)
-├── index.html               # Application entry HTML including Tailwind script injection
-├── index.tsx                # React root entry point
-├── metadata.json            # Application metadata and permission requests
-├── README.md                # Project documentation
-└── types.ts                 # TypeScript definitions for Chat, Messages, and Settings
+├── components/          # React components (App, Sidebar, Settings, etc.)
+├── contexts/            # React Contexts (Authentication)
+├── services/            # API wrappers (Gemini, Supabase, Chat persistence)
+├── devs/                # Development documentation and program flows
+├── types.ts             # Global TypeScript definitions
+├── constants.ts         # Default configurations and constants
+└── index.tsx            # Main application entry point
 ```
 
-## Tech Stack
+For detailed logic explanations, refer to the [Program Flows](./devs/programFlows.md).
 
-- **Frontend**: React 19
-- **Styling**: Tailwind CSS (via CDN for portability)
-- **Icons**: Lucide React
-- **AI Integration**: @google/genai SDK
-- **Markdown**: react-markdown
+---
+
+## 🛡️ License
+
+This project is for educational purposes as a demonstration of the Gemini API and Supabase integration.
