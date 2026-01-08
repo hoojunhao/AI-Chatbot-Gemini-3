@@ -450,14 +450,7 @@ function GeminiChat() {
         <div className="flex items-center p-3 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
 
 
-          <div className="flex items-center gap-2">
-            <img
-              src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
-              className="w-6 h-6"
-              alt="Gemini Sparkle"
-            />
-            <span className="text-xl font-medium text-gray-700 dark:text-gray-200">Gemini</span>
-          </div>
+          <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
 
 
 
