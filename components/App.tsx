@@ -110,6 +110,7 @@ function GeminiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 
   // Sync URL sessionId with state
@@ -632,6 +633,7 @@ function GeminiChat() {
               />
 
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -648,7 +650,13 @@ function GeminiChat() {
               <div className="flex items-center mr-2">
                 <ModelSelector
                   settings={settings}
-                  onUpdateSettings={handleUpdateSettings}
+                  onUpdateSettings={(newSettings) => {
+                    handleUpdateSettings(newSettings);
+                    // Refocus textarea after model change
+                    setTimeout(() => {
+                      textareaRef.current?.focus();
+                    }, 0);
+                  }}
                 />
               </div>
 
