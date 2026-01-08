@@ -108,6 +108,7 @@ function GeminiChat() {
   const textBeforeRecordingRef = useRef<string>('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -144,13 +145,28 @@ function GeminiChat() {
     }
   }, [isDarkMode]);
 
+  // Scroll to bottom when a new message is added (count increases)
   useEffect(() => {
-    scrollToBottom();
-  }, [currentSessionId, sessions]);
+    if (sessions.length > 0 && currentSessionId) {
+      const currentSession = sessions.find(s => s.id === currentSessionId);
+      if (currentSession) {
+        // Only scroll if we haven't seen this message count before
+        scrollToBottom();
+      }
+    }
+  }, [sessions.length, currentSessionId, sessions.find(s => s.id === currentSessionId)?.messages.length]);
 
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      const { scrollHeight, clientHeight } = chatContainerRef.current;
+      const maxScrollTop = scrollHeight - clientHeight;
+
+      chatContainerRef.current.scrollTo({
+        top: maxScrollTop,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const createNewSession = async () => {
@@ -339,7 +355,8 @@ function GeminiChat() {
 
     } finally {
       setIsGenerating(false);
-      scrollToBottom();
+      setIsGenerating(false);
+      // scrollToBottom(); // Removed force scroll at end to preserve reading position
     }
   };
 
@@ -477,7 +494,10 @@ function GeminiChat() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700"
+        >
           {!currentSession || currentSession.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
               <div className="mb-8 relative scale-150">

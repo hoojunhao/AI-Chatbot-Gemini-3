@@ -1,5 +1,6 @@
-import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface MarkdownRendererProps {
   content: string;
@@ -9,6 +10,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <div className="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-100 dark:prose-pre:bg-[#1e1f20] prose-pre:rounded-xl prose-pre:border dark:prose-pre:border-[#444746] prose-code:text-sm prose-code:font-mono">
       <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={{
           code({ node, inline, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
@@ -16,7 +19,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
               <div className="relative rounded-md overflow-hidden my-4">
                 <div className="flex justify-between items-center px-4 py-1.5 bg-gray-200 dark:bg-[#2c2c2c] text-xs font-medium text-gray-600 dark:text-gray-300">
                   <span>{match[1]}</span>
-                  <button 
+                  <button
                     onClick={() => navigator.clipboard.writeText(String(children))}
                     className="hover:text-blue-500 transition-colors"
                   >
