@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, User as UserIcon, Sparkles } from 'lucide-react';
+import { Mail, Lock, User as UserIcon } from 'lucide-react';
 
 const Auth: React.FC = () => {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -45,7 +45,11 @@ const Auth: React.FC = () => {
                 {/* Logo & Title */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-blue-500 to-purple-600 rounded-2xl mb-4">
-                        <Sparkles className="w-8 h-8 text-white" />
+                        <img
+                            src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
+                            alt="Gemini Sparkle"
+                            className="w-10 h-10"
+                        />
                     </div>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                         GeminiChat

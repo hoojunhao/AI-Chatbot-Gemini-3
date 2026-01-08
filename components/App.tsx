@@ -6,7 +6,6 @@ import {
   Mic,
   Image as ImageIcon,
   StopCircle,
-  Sparkles,
   Paperclip,
   X,
   Compass,
@@ -451,7 +450,14 @@ function GeminiChat() {
         <div className="flex items-center p-3 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
 
 
-          <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
+          <div className="flex items-center gap-2">
+            <img
+              src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
+              className="w-6 h-6"
+              alt="Gemini Sparkle"
+            />
+            <span className="text-xl font-medium text-gray-700 dark:text-gray-200">Gemini</span>
+          </div>
 
 
 
@@ -481,9 +487,13 @@ function GeminiChat() {
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
           {!currentSession || currentSession.messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-              <div className="mb-8 relative">
+              <div className="mb-8 relative scale-150">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-red-500 blur-xl opacity-20 absolute inset-0"></div>
-                <Sparkles className="w-16 h-16 text-blue-500 relative z-10" />
+                <img
+                  src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
+                  alt="AI icon"
+                  className="w-16 h-16 relative z-10"
+                />
               </div>
               <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
                 Hello, Human.

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, Mic } from 'lucide-react';
+import { ChevronDown, ChevronUp, Mic } from 'lucide-react';
 import { Message } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 
@@ -60,8 +60,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     // Render Model Message
     return (
         <div className="flex gap-4 mb-8">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-red-500 flex items-center justify-center shrink-0 mt-1">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-1">
+                <img
+                    src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
+                    alt="Gemini AI"
+                    className="w-6 h-6 animate-pulse-slow"
+                />
             </div>
 
             <div className="flex flex-col max-w-[85%] md:max-w-[85%] items-start w-full">
