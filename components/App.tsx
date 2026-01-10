@@ -165,7 +165,7 @@ function GeminiChat() {
 
       chatContainerRef.current.scrollTo({
         top: maxScrollTop,
-        behavior: 'smooth'
+        behavior: isGenerating ? 'auto' : 'smooth'
       });
     }
   };
@@ -326,6 +326,9 @@ function GeminiChat() {
           }
           return s;
         }));
+
+        // Scroll to follow streaming text as it appears
+        scrollToBottom();
       }
 
       if (activeSessionId && user) {
