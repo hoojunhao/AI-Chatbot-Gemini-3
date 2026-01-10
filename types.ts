@@ -54,3 +54,39 @@ export interface SidebarProps {
   isDarkMode: boolean;
   toggleTheme: () => void;
 }
+
+// ============================================
+// Summarization Types
+// ============================================
+
+export interface SessionSummary {
+  id: string;
+  sessionId: string;
+  summaryText: string;
+  messagesSummarizedCount: number;
+  version: number;
+  updatedAt: number;
+}
+
+export interface SummarizationConfig {
+  // Trigger summarization after this many tokens
+  summarizationThreshold: number;
+  // Number of recent messages to keep unsummarized
+  recentMessagesToKeep: number;
+  // Maximum tokens for summary text
+  maxSummaryTokens: number;
+  // Model to use for summarization (can be cheaper/faster model)
+  summarizationModel: string;
+}
+
+export interface TokenEstimationConfig {
+  // Method to use: 'local', 'api', or 'hybrid'
+  method: 'local' | 'api' | 'hybrid';
+  // For hybrid mode: use API validation every N messages
+  useAPIValidationFrequency: number;
+  // Always use API before summarization for precision
+  useAPIBeforeSummarization: boolean;
+  // Language-aware estimation factors
+  cjkCharsPerToken: number;
+  latinCharsPerToken: number;
+}

@@ -1,11 +1,14 @@
 import { Message } from '../types';
 import { CONTEXT_CONFIG } from '../constants';
+import { estimateMessageTokensLocal } from './tokenEstimator';
 
 /**
  * Context Manager for Sliding Window Implementation
  *
  * Manages conversation history to fit within API context limits
  * using the Google GenAI SDK TypeScript patterns.
+ *
+ * Now uses language-aware token estimation from tokenEstimator service.
  */
 
 export interface ContextWindow {
@@ -17,36 +20,21 @@ export interface ContextWindow {
 
 /**
  * Estimates token count for a message
- * Based on average of 4 characters per token for English text
+ * Uses language-aware estimation (CJK vs Latin characters)
+ *
+ * @deprecated Use estimateMessageTokensLocal from tokenEstimator.ts instead
  */
 export function estimateMessageTokens(message: Message): number {
-  let tokens = 0;
-
-  // Text content
-  tokens += Math.ceil(message.text.length / CONTEXT_CONFIG.CHARS_PER_TOKEN);
-
-  // Attachments (images are ~258 tokens for inline data reference)
-  if (message.attachments) {
-    tokens += message.attachments.length * 258;
-
-    // Base64 image data (very rough estimate)
-    message.attachments.forEach(att => {
-      // Base64 is ~1.37x the binary size, and images use special tokenization
-      tokens += Math.ceil(att.data.length / 1000); // Rough estimate
-    });
-  }
-
-  // Role overhead (~4 tokens per message for role markers)
-  tokens += 4;
-
-  return tokens;
+  return estimateMessageTokensLocal(message);
 }
 
 /**
  * Estimates total tokens for an array of messages
+ *
+ * @deprecated Use estimateTotalTokensLocal from tokenEstimator.ts instead
  */
 export function estimateTotalTokens(messages: Message[]): number {
-  return messages.reduce((total, msg) => total + estimateMessageTokens(msg), 0);
+  return messages.reduce((total, msg) => total + estimateMessageTokensLocal(msg), 0);
 }
 
 /**
@@ -86,7 +74,7 @@ export function createSlidingWindow(
   // Iterate from newest to oldest
   for (let i = validMessages.length - 1; i >= 0; i--) {
     const message = validMessages[i];
-    const messageTokens = estimateMessageTokens(message);
+    const messageTokens = estimateMessageTokensLocal(message);
 
     // Check if adding this message would exceed limits
     const wouldExceedTokens = currentTokens + messageTokens > availableTokens;

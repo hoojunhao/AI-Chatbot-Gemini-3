@@ -307,7 +307,8 @@ function GeminiChat() {
         settings,
         existingMessages,
         currentInput,
-        currentAttachments
+        currentAttachments,
+        activeSessionId  // Pass session ID for summarization (undefined for guest users)
       );
 
       let fullResponse = '';

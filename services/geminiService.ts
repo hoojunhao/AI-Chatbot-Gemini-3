@@ -1,13 +1,15 @@
 import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/genai";
 import { AppSettings, Message, ModelType } from "../types";
 import { createSlidingWindow } from "./contextManager";
+import { SummaryService } from "./summaryService";
 
 export const generateResponseStream = async function* (
   apiKey: string,
   settings: AppSettings,
   history: Message[],
   newMessage: string,
-  attachments: { mimeType: string; data: string }[] = []
+  attachments: { mimeType: string; data: string }[] = [],
+  sessionId?: string  // Add sessionId parameter for summarization (optional for guest users)
 ) {
   if (!apiKey) throw new Error("API Key is missing");
 
@@ -29,23 +31,43 @@ export const generateResponseStream = async function* (
   // Add text
   parts.push({ text: newMessage });
 
-  // Construct history with SLIDING WINDOW if memory is enabled
+  // Construct history with SUMMARIZATION + SLIDING WINDOW if memory is enabled
   let contents: Content[] = [];
 
   if (settings.enableMemory) {
-    // Calculate system instruction tokens for budget
-    const systemInstructionTokens = settings.systemInstruction
-      ? Math.ceil(settings.systemInstruction.length / 4)
-      : 0;
+    let contextMessages: Message[];
 
-    // Apply sliding window to history
-    const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+    if (sessionId) {
+      // Logged-in user: Use summarization for context management
+      try {
+        contextMessages = await SummaryService.buildContextWithSummary(
+          apiKey,
+          sessionId,
+          history
+        );
+        console.log(`📦 Context with summarization: ${contextMessages.length} messages`);
+      } catch (error) {
+        console.error('Summarization failed, falling back to sliding window:', error);
+        // Fallback to sliding window if summarization fails
+        const systemInstructionTokens = settings.systemInstruction
+          ? Math.ceil(settings.systemInstruction.length / 4)
+          : 0;
+        const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+        contextMessages = contextWindow.messages;
+        console.log(`⚠️ Fallback - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
+      }
+    } else {
+      // Guest user: Use sliding window only (no database access)
+      const systemInstructionTokens = settings.systemInstruction
+        ? Math.ceil(settings.systemInstruction.length / 4)
+        : 0;
+      const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+      contextMessages = contextWindow.messages;
+      console.log(`👤 Guest - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
+    }
 
-    // Log context info for debugging
-    console.log(`Context Window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages, ~${contextWindow.estimatedTokens} tokens, truncated: ${contextWindow.truncated}`);
-
-    // Convert windowed messages to Content format
-    contents = contextWindow.messages.map(msg => ({
+    // Convert messages to Content format for Gemini API
+    contents = contextMessages.map(msg => ({
       role: msg.role,
       parts: msg.attachments
         ? [...msg.attachments.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.data } })), { text: msg.text }]
