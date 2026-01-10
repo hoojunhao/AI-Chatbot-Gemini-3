@@ -1,5 +1,6 @@
 import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/genai";
 import { AppSettings, Message, ModelType } from "../types";
+import { createSlidingWindow } from "./contextManager";
 
 export const generateResponseStream = async function* (
   apiKey: string,
@@ -28,18 +29,28 @@ export const generateResponseStream = async function* (
   // Add text
   parts.push({ text: newMessage });
 
-  // Construct history if memory is enabled
+  // Construct history with SLIDING WINDOW if memory is enabled
   let contents: Content[] = [];
 
   if (settings.enableMemory) {
-    contents = history
-      .filter(msg => !msg.isError) // Do not include error messages in context
-      .map(msg => ({
-        role: msg.role,
-        parts: msg.attachments
-          ? [...msg.attachments.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.data } })), { text: msg.text }]
-          : [{ text: msg.text }]
-      }));
+    // Calculate system instruction tokens for budget
+    const systemInstructionTokens = settings.systemInstruction
+      ? Math.ceil(settings.systemInstruction.length / 4)
+      : 0;
+
+    // Apply sliding window to history
+    const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+
+    // Log context info for debugging
+    console.log(`Context Window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages, ~${contextWindow.estimatedTokens} tokens, truncated: ${contextWindow.truncated}`);
+
+    // Convert windowed messages to Content format
+    contents = contextWindow.messages.map(msg => ({
+      role: msg.role,
+      parts: msg.attachments
+        ? [...msg.attachments.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.data } })), { text: msg.text }]
+        : [{ text: msg.text }]
+    }));
   }
 
   // Add the new message to contents

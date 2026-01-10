@@ -15,3 +15,24 @@ export const DEFAULT_SETTINGS: AppSettings = {
     dangerousContent: 'BLOCK_ONLY_HIGH',
   }
 };
+
+// Context Window Configuration
+export const CONTEXT_CONFIG = {
+  // Maximum messages to include in context (count-based limit)
+  MAX_MESSAGES: 50,
+
+  // Maximum estimated tokens for context (token-based limit)
+  MAX_CONTEXT_TOKENS: 100000,
+
+  // Average characters per token (rough estimate for English text)
+  CHARS_PER_TOKEN: 4,
+
+  // Tokens reserved for system instruction
+  SYSTEM_INSTRUCTION_BUFFER: 2000,
+
+  // Tokens reserved for new message + response
+  RESPONSE_BUFFER: 8000,
+
+  // Minimum messages to always include (most recent)
+  MIN_RECENT_MESSAGES: 5,
+};
