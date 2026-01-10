@@ -11,7 +11,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
 
     // Parse for <thinking> tags
-    // Parse for <thinking> tags
+    // Handle both complete and incomplete (streaming) thinking blocks
     const thinkingMatches = message.role === 'model' && message.text
         ? [...message.text.matchAll(/<thinking>([\s\S]*?)<\/thinking>/g)]
         : [];
@@ -20,9 +20,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         ? thinkingMatches.map(m => m[1].replace(/<\/?thinking>/g, '').trim()).join('\n\n')
         : null;
 
-    const mainContent = message.role === 'model' && message.text
-        ? message.text.replace(/<thinking>([\s\S]*?)<\/thinking>/g, '').trim()
-        : message.text;
+    // Remove complete thinking blocks and handle incomplete ones during streaming
+    let mainContent = message.text;
+    if (message.role === 'model' && message.text) {
+        // Remove complete thinking blocks
+        mainContent = message.text.replace(/<thinking>([\s\S]*?)<\/thinking>/g, '').trim();
+
+        // Check for incomplete thinking tag (streaming in progress)
+        // If there's an opening <thinking> without closing </thinking>, hide it
+        const hasIncompleteThinking = mainContent.includes('<thinking>');
+        if (hasIncompleteThinking) {
+            // Remove everything from <thinking> onwards (incomplete block)
+            mainContent = mainContent.substring(0, mainContent.indexOf('<thinking>')).trim();
+        }
+    }
 
     // Render User Message
     if (message.role === 'user') {
