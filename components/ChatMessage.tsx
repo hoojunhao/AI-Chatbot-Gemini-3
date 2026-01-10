@@ -10,6 +10,53 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
 
+    // Helper function to truncate title at word boundary
+    const truncateTitle = (title: string, maxLength: number = 50): string => {
+        if (title.length <= maxLength) {
+            return title;
+        }
+
+        // Truncate at word boundary if possible
+        const truncated = title.substring(0, maxLength);
+        const lastSpace = truncated.lastIndexOf(' ');
+
+        if (lastSpace > maxLength * 0.6) {
+            return truncated.substring(0, lastSpace) + '…';
+        }
+
+        return truncated + '…';
+    };
+
+    // Helper function to extract thinking title from a single thinking section
+    const extractTitleFromSection = (content: string): string => {
+        if (!content || !content.trim()) {
+            return 'Show thinking';
+        }
+
+        const trimmed = content.trim();
+
+        // Strategy 1: Look for first bold text **text**
+        const boldMatch = trimmed.match(/\*\*(.+?)\*\*/);
+        if (boldMatch && boldMatch[1].trim()) {
+            return truncateTitle(boldMatch[1].trim());
+        }
+
+        // Strategy 2: Use first non-empty line
+        const lines = trimmed.split('\n');
+        for (const line of lines) {
+            const cleaned = line.trim();
+            if (cleaned) {
+                // Remove markdown formatting
+                const plainText = cleaned.replace(/[*_`#]/g, '').trim();
+                if (plainText) {
+                    return truncateTitle(plainText);
+                }
+            }
+        }
+
+        return 'Show thinking';
+    };
+
     // Parse for <thinking> tags
     // Handle both complete and incomplete (streaming) thinking blocks
     const thinkingMatches = message.role === 'model' && message.text
@@ -34,6 +81,24 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             mainContent = mainContent.substring(0, mainContent.indexOf('<thinking>')).trim();
         }
     }
+
+    // Determine button text based on streaming state
+    const getThinkingButtonText = (): string => {
+        // If we have substantial main content, we're done streaming - show "Show thinking"
+        if (mainContent && mainContent.trim().length > 10) {
+            return 'Show thinking';
+        }
+
+        // Otherwise, we're still streaming - show the title of the last thinking section
+        if (thinkingMatches.length > 0) {
+            const lastThinkingSection = thinkingMatches[thinkingMatches.length - 1][1]
+                .replace(/<\/?thinking>/g, '')
+                .trim();
+            return extractTitleFromSection(lastThinkingSection);
+        }
+
+        return 'Show thinking';
+    };
 
     // Render User Message
     if (message.role === 'user') {
@@ -86,7 +151,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                             onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                             className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#333] px-2 py-1 rounded-md transition-colors"
                         >
-                            <span>Show thinking</span>
+                            <span>{getThinkingButtonText()}</span>
                             {isThinkingExpanded ? (
                                 <ChevronUp className="w-4 h-4" />
                             ) : (
