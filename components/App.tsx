@@ -10,7 +10,8 @@ import {
   X,
   Compass,
   LogOut,
-  LogIn
+  LogIn,
+  MessageSquareMore
 } from 'lucide-react';
 import Auth from './Auth';
 import Sidebar from './Sidebar';
@@ -29,6 +30,7 @@ import ChatMessage from './ChatMessage';
 import { ErrorMessage } from './ErrorMessage';
 import { parseGeminiError, formatErrorForChat } from '../services/errorService';
 import { useSessionSynopsis } from '../hooks/useSessionSynopsis';
+import SearchPage from './SearchPage';
 
 // Safely retrieve API Key
 const getApiKey = () => {
@@ -64,6 +66,7 @@ function GeminiChat() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryManagerOpen, setIsMemoryManagerOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Initialize theme preference from local storage
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
@@ -170,6 +173,7 @@ function GeminiChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<{ mimeType: string; data: string; name: string }[]>([]);
   const [lastError, setLastError] = useState<ParsedGeminiError | null>(null);
+  const [isTemporaryMode, setIsTemporaryMode] = useState(false);
 
   // Audio State
   const [isRecording, setIsRecording] = useState(false);
@@ -199,6 +203,10 @@ function GeminiChat() {
   // Initialize Sessions
   useEffect(() => {
     if (user) {
+      // Cleanup expired temporary sessions on app load
+      ChatService.cleanupExpiredTemporarySessions(user.id)
+        .catch(err => console.warn('Temporary chat cleanup failed:', err));
+
       ChatService.fetchSessions(user.id)
         .then(fetchedSessions => {
           setSessions(fetchedSessions);
@@ -252,6 +260,7 @@ function GeminiChat() {
     navigate('/app');
     setInput('');
     setAttachments([]);
+    setIsTemporaryMode(false);  // Reset temporary mode when starting a new chat
   };
 
   const deleteSession = (id: string) => {
@@ -296,7 +305,7 @@ function GeminiChat() {
     if (!activeSessionId) {
       try {
         if (user) {
-          activeSessionId = await ChatService.createSession(user.id, input.slice(0, 30) || 'New Chat');
+          activeSessionId = await ChatService.createSession(user.id, input.slice(0, 30) || 'New Chat', isTemporaryMode);
           navigate(`/app/${activeSessionId}`);
         } else {
           // Guest: Generate a random local ID
@@ -309,9 +318,16 @@ function GeminiChat() {
           title: input.slice(0, 30) || 'New Chat',
           messages: [],
           updatedAt: Date.now(),
-          isPinned: false
+          isPinned: false,
+          isTemporary: isTemporaryMode
         };
+        // Add to sessions list (temp sessions are filtered out in Sidebar)
         setSessions(prev => [newSession, ...prev]);
+
+        // Reset temporary mode after creating session
+        if (isTemporaryMode) {
+          setIsTemporaryMode(false);
+        }
 
       } catch (error) {
         console.error("Failed to create session", error);
@@ -380,6 +396,9 @@ function GeminiChat() {
 
       const existingMessages = sessionInState ? sessionInState.messages : [];
 
+      // Check if this is a temporary session
+      const isSessionTemporary = currentSession?.isTemporary || isTemporaryMode;
+
       const stream = generateResponseStream(
         apiKey,
         settings,
@@ -389,7 +408,8 @@ function GeminiChat() {
         activeSessionId,  // Pass session ID for summarization (undefined for guest users)
         user?.id,         // Pass user ID for cross-session memory
         0,                // retryAttempt
-        userLocation      // User's location for context-aware responses
+        userLocation,     // User's location for context-aware responses
+        isSessionTemporary  // Skip memory/summarization for temporary chats
       );
 
       let fullResponse = '';
@@ -625,31 +645,34 @@ function GeminiChat() {
         toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         sessions={sessions}
         currentSessionId={currentSessionId}
-        onSelectSession={(id) => navigate(`/app/${id}`)}
-        onNewChat={createNewSession}
+        onSelectSession={(id) => {
+          navigate(`/app/${id}`);
+          setIsSearchOpen(false);
+        }}
+        onNewChat={() => {
+          createNewSession();
+          setIsSearchOpen(false);
+        }}
         onDeleteSession={deleteSession}
         onTogglePinSession={togglePinSession}
         onRenameSession={renameSession}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
         isDarkMode={isDarkMode}
         themePreference={themePreference}
         setThemePreference={setThemePreference}
         userLocation={userLocation}
         locationLoading={locationLoading}
         onUpdateLocation={handleUpdateLocation}
+        isTemporaryMode={isTemporaryMode}
+        onToggleTemporaryMode={() => setIsTemporaryMode(!isTemporaryMode)}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative h-full w-full">
-        {/* Top Header */}
+        {/* Top Header - Always visible */}
         <div className="flex items-center p-3 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
-
-
           <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
-
-
-
-
           <div className="ml-auto">
             {user ? (
               <button
@@ -671,42 +694,69 @@ function GeminiChat() {
           </div>
         </div>
 
+        {isSearchOpen ? (
+          <SearchPage
+            sessions={sessions}
+            onSelectSession={(id) => {
+              navigate(`/app/${id}`);
+              setIsSearchOpen(false);
+            }}
+            onClose={() => setIsSearchOpen(false)}
+          />
+        ) : (
+        <>
         {/* Chat Area */}
         <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700"
         >
           {!currentSession || currentSession.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-              <div className="mb-8 relative scale-150">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-red-500 blur-xl opacity-20 absolute inset-0"></div>
-                <img
-                  src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
-                  alt="AI icon"
-                  className="w-16 h-16 relative z-10"
-                />
+            isTemporaryMode && user ? (
+              // Temporary Chat Mode Welcome Screen
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                <div className="mb-6">
+                  <MessageSquareMore className="w-12 h-12 text-gray-400" />
+                </div>
+                <h1 className="text-2xl font-medium text-gray-800 dark:text-gray-100 mb-2">
+                  Temporary chat
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                  Temporary chats don't appear in Recent Chats and are saved for 72 hours.
+                </p>
               </div>
-              <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
-                Hello, Human.
-              </h1>
-              <p className="text-xl text-gray-500 dark:text-gray-400 mb-8 max-w-lg">
-                How can I help you today?
-              </p>
-              <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
-                {['Explain quantum physics', 'Write a React component', 'Plan a trip to Tokyo', 'Debug this code'].map(suggestion => (
-                  <button
-                    key={suggestion}
-                    onClick={() => {
-                      setInput(suggestion);
-                    }}
-                    className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
-                  >
-                    <Compass className="w-4 h-4 inline-block mr-2 text-blue-500" />
-                    {suggestion}
-                  </button>
-                ))}
+            ) : (
+              // Normal Welcome Screen
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                <div className="mb-8 relative scale-150">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-red-500 blur-xl opacity-20 absolute inset-0"></div>
+                  <img
+                    src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg"
+                    alt="AI icon"
+                    className="w-16 h-16 relative z-10"
+                  />
+                </div>
+                <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
+                  Hello, Human.
+                </h1>
+                <p className="text-xl text-gray-500 dark:text-gray-400 mb-8 max-w-lg">
+                  How can I help you today?
+                </p>
+                <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
+                  {['Explain quantum physics', 'Write a React component', 'Plan a trip to Tokyo', 'Debug this code'].map(suggestion => (
+                    <button
+                      key={suggestion}
+                      onClick={() => {
+                        setInput(suggestion);
+                      }}
+                      className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
+                    >
+                      <Compass className="w-4 h-4 inline-block mr-2 text-blue-500" />
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )
           ) : (
             <div className="max-w-5xl mx-auto w-full pb-32 pt-8 px-4">
               {currentSession.messages.map((msg, idx) => (
@@ -828,7 +878,7 @@ function GeminiChat() {
                   e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Gemini"
+                placeholder={isTemporaryMode && user ? "Ask questions in a temporary chat" : "Ask Gemini"}
                 className="flex-1 max-h-[150px] py-2.5 bg-transparent border-none outline-none resize-none text-gray-800 dark:text-gray-100 placeholder-gray-500 leading-6"
                 rows={1}
               />
@@ -871,6 +921,8 @@ function GeminiChat() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <SettingsModal

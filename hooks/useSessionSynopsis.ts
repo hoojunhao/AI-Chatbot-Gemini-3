@@ -49,13 +49,20 @@ export function useSessionSynopsis({
       return;
     }
 
+    // Skip synopsis for temporary sessions
+    const session = sessions.find(s => s.id === sessionId);
+    if (session?.isTemporary) {
+      console.log(`🕐 Skipping synopsis for temporary session ${sessionId.slice(0, 8)}`);
+      return;
+    }
+
     try {
       console.log(`🔄 Triggering synopsis for session ${sessionId.slice(0, 8)}...`);
       await generateSynopsisIfNeeded(sessionId, messages, apiKey);
     } catch (error) {
       console.error('Synopsis generation failed:', error);
     }
-  }, [apiKey, userId]);
+  }, [apiKey, userId, sessions]);
 
   // Idle timeout handler
   const handleIdle = useCallback(() => {

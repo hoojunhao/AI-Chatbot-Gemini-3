@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
-  MessageSquare,
+  MessageSquareMore,
   Settings,
   Menu,
   Search,
@@ -29,27 +29,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTogglePinSession,
   onRenameSession,
   onOpenSettings,
+  onOpenSearch,
   isDarkMode,
   themePreference,
   setThemePreference,
   userLocation,
   locationLoading,
   onUpdateLocation,
+  isTemporaryMode,
+  onToggleTemporaryMode,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
 
-  const filteredSessions = sessions.filter(s =>
-    s.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const pinnedSessions = filteredSessions.filter(s => s.isPinned);
-  const unpinnedSessions = filteredSessions.filter(s => !s.isPinned);
+  // Filter out temporary sessions from sidebar display
+  const visibleSessions = sessions.filter(s => !s.isTemporary);
+  const pinnedSessions = visibleSessions.filter(s => s.isPinned);
+  const unpinnedSessions = visibleSessions.filter(s => !s.isPinned);
 
   const handleStartEdit = (session: ChatSession, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -186,19 +186,27 @@ const Sidebar: React.FC<SidebarProps> = ({
       `}>
         {/* Header */}
         <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-3`}>
-
           <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
             <Menu className="w-5 h-5" />
           </button>
+          {user && isOpen && (
+            <button
+              onClick={onOpenSearch}
+              className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500"
+              title="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* New Chat Button */}
-        <div className={`px-4 mb-4 ${!isOpen ? 'flex justify-center px-2' : ''}`}>
+        <div className={`px-4 mb-4 ${!isOpen ? 'flex flex-col items-center gap-2 px-2' : 'flex items-center gap-2'}`}>
           <button
             onClick={onNewChat}
             className={`
               flex items-center gap-3
-              ${isOpen ? 'w-full px-3 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200' : 'p-3 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
+              ${isOpen ? 'flex-1 px-3 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200' : 'p-3 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
               transition-colors
               font-medium text-sm
             `}
@@ -207,23 +215,23 @@ const Sidebar: React.FC<SidebarProps> = ({
             <SquarePen className="w-5 h-5" />
             {isOpen && <span className="flex-1 text-left">New chat</span>}
           </button>
-        </div>
 
-        {/* Search - Only for logged in users */}
-        {user && isOpen && (
-          <div className="px-4 mb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-transparent rounded-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              />
-            </div>
-          </div>
-        )}
+          {/* Temporary Chat Toggle - only for logged-in users */}
+          {user && (
+            <button
+              onClick={onToggleTemporaryMode}
+              className={`
+                p-2.5 rounded-full transition-colors
+                ${isTemporaryMode
+                  ? 'bg-[#d3e3fd] dark:bg-[#004a77] text-blue-600 dark:text-blue-300'
+                  : 'hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
+              `}
+              title="Temporary chat"
+            >
+              <MessageSquareMore className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
         {/* Sessions List or Guest Promo */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
@@ -233,8 +241,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               {pinnedSessions.map(renderSessionRow)}
               {unpinnedSessions.map(renderSessionRow)}
 
-              {filteredSessions.length === 0 && (
-                <div className="px-4 text-xs text-gray-400 italic">No chats found</div>
+              {sessions.length === 0 && (
+                <div className="px-4 text-xs text-gray-400 italic">No chats yet</div>
               )}
             </>
           ) : (

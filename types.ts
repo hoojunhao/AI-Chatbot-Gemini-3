@@ -26,6 +26,7 @@ export interface ChatSession {
   messages: Message[];
   updatedAt: number;
   isPinned?: boolean;
+  isTemporary?: boolean;
 }
 
 export interface AppSettings {
@@ -54,6 +55,7 @@ export interface SidebarProps {
   onTogglePinSession: (id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
   onOpenSettings: () => void;
+  onOpenSearch: () => void;
   isDarkMode: boolean;
   themePreference: ThemePreference;
   setThemePreference: (pref: ThemePreference) => void;
@@ -61,6 +63,9 @@ export interface SidebarProps {
   userLocation: UserLocation | null;
   locationLoading: boolean;
   onUpdateLocation: () => void;
+  // Temporary chat props
+  isTemporaryMode: boolean;
+  onToggleTemporaryMode: () => void;
 }
 
 // ============================================

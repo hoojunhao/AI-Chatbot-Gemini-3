@@ -58,7 +58,8 @@ export const generateResponseStream = async function* (
   sessionId?: string,  // Add sessionId parameter for summarization (optional for guest users)
   userId?: string,     // Add userId parameter for cross-session memory
   retryAttempt: number = 0,  // For auto-retry with exponential backoff
-  userLocation?: UserLocation | null  // User's location for context-aware responses
+  userLocation?: UserLocation | null,  // User's location for context-aware responses
+  isTemporary: boolean = false  // Skip memory/summarization for temporary chats
 ) {
   if (!apiKey) throw new Error("API Key is missing");
 
@@ -86,8 +87,8 @@ export const generateResponseStream = async function* (
   if (settings.enableMemory) {
     let contextMessages: Message[];
 
-    if (sessionId && userId && settings.enableCrossSessionMemory) {
-      // Logged-in user with cross-session memory enabled
+    if (sessionId && userId && settings.enableCrossSessionMemory && !isTemporary) {
+      // Logged-in user with cross-session memory enabled (not temporary chat)
       try {
         const memoryManager = getMemoryManager(apiKey);
         contextMessages = await memoryManager.buildContextWithMemory(
@@ -117,7 +118,7 @@ export const generateResponseStream = async function* (
           console.log(`⚠️ Final fallback - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
         }
       }
-    } else if (sessionId) {
+    } else if (sessionId && !isTemporary) {
       // Logged-in user without cross-session memory: Use summarization for context management
       try {
         contextMessages = await SummaryService.buildContextWithSummary(
@@ -136,6 +137,14 @@ export const generateResponseStream = async function* (
         contextMessages = contextWindow.messages;
         console.log(`⚠️ Fallback - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
       }
+    } else if (isTemporary) {
+      // Temporary chat: Use sliding window only (no memory/summarization)
+      const systemInstructionTokens = settings.systemInstruction
+        ? Math.ceil(settings.systemInstruction.length / 4)
+        : 0;
+      const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+      contextMessages = contextWindow.messages;
+      console.log(`🕐 Temporary chat - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
     } else {
       // Guest user: Use sliding window only (no database access)
       const systemInstructionTokens = settings.systemInstruction
@@ -246,8 +255,8 @@ export const generateResponseStream = async function* (
       throw new GeminiApiError(error);
     }
 
-    // Background memory extraction (fire-and-forget)
-    if (settings.enableCrossSessionMemory && userId && sessionId) {
+    // Background memory extraction (fire-and-forget) - skip for temporary chats
+    if (settings.enableCrossSessionMemory && userId && sessionId && !isTemporary) {
       const memoryManager = getMemoryManager(apiKey);
       memoryManager.processConversationForMemories(userId, sessionId, history)
         .catch(err => console.error('Background memory extraction failed:', err));
@@ -289,7 +298,8 @@ export const generateResponseStream = async function* (
         sessionId,
         userId,
         retryAttempt + 1,
-        userLocation
+        userLocation,
+        isTemporary
       );
       return;
     }

@@ -14,10 +14,12 @@ export class ChatService {
         id,
         title,
         is_pinned,
+        is_temporary,
         created_at,
         updated_at
       `)
             .eq('user_id', userId)
+            .eq('is_temporary', false)  // Filter out temporary chats from sidebar
             .order('updated_at', { ascending: false });
 
         if (error) {
@@ -38,6 +40,7 @@ export class ChatService {
                     id: session.id,
                     title: session.title,
                     isPinned: session.is_pinned,
+                    isTemporary: session.is_temporary,
                     messages,
                     updatedAt: new Date(session.updated_at).getTime(),
                 };
@@ -47,10 +50,10 @@ export class ChatService {
         return sessionsWithMessages;
     }
 
-    static async createSession(userId: string, title: string = 'New Chat'): Promise<string> {
+    static async createSession(userId: string, title: string = 'New Chat', isTemporary: boolean = false): Promise<string> {
         const { data, error } = await supabase
             .from('chat_sessions')
-            .insert({ user_id: userId, title })
+            .insert({ user_id: userId, title, is_temporary: isTemporary })
             .select('id')
             .single();
 
@@ -74,6 +77,21 @@ export class ChatService {
             .eq('id', sessionId);
 
         if (error) throw error;
+    }
+
+    static async cleanupExpiredTemporarySessions(userId: string): Promise<void> {
+        const expiryTime = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+        const { error } = await supabase
+            .from('chat_sessions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('is_temporary', true)
+            .lt('created_at', expiryTime);
+
+        if (error) {
+            console.error('Error cleaning up temporary sessions:', error);
+            throw error;
+        }
     }
 
     // ============================================
