@@ -185,7 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         transition-all duration-300
       `}>
         {/* Header */}
-        <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-3`}>
+        <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-4`}>
           <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
             <Menu className="w-5 h-5" />
           </button>

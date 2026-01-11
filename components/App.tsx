@@ -8,7 +8,6 @@ import {
   StopCircle,
   Paperclip,
   X,
-  Compass,
   LogOut,
   LogIn,
   MessageSquareMore
@@ -665,13 +664,16 @@ function GeminiChat() {
         locationLoading={locationLoading}
         onUpdateLocation={handleUpdateLocation}
         isTemporaryMode={isTemporaryMode}
-        onToggleTemporaryMode={() => setIsTemporaryMode(!isTemporaryMode)}
+        onToggleTemporaryMode={() => {
+          setIsTemporaryMode(!isTemporaryMode);
+          setIsSearchOpen(false);
+        }}
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative h-full w-full">
         {/* Top Header - Always visible */}
-        <div className="flex items-center p-3 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
+        <div className="flex items-center p-4 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
           <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
           <div className="ml-auto">
             {user ? (
@@ -738,23 +740,9 @@ function GeminiChat() {
                 <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
                   Hello, Human.
                 </h1>
-                <p className="text-xl text-gray-500 dark:text-gray-400 mb-8 max-w-lg">
+                <p className="text-xl text-gray-500 dark:text-gray-400 max-w-lg">
                   How can I help you today?
                 </p>
-                <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
-                  {['Explain quantum physics', 'Write a React component', 'Plan a trip to Tokyo', 'Debug this code'].map(suggestion => (
-                    <button
-                      key={suggestion}
-                      onClick={() => {
-                        setInput(suggestion);
-                      }}
-                      className="px-4 py-2 bg-gray-50 dark:bg-[#1e1f20] hover:bg-gray-100 dark:hover:bg-[#333] rounded-full text-sm text-gray-600 dark:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#444]"
-                    >
-                      <Compass className="w-4 h-4 inline-block mr-2 text-blue-500" />
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
               </div>
             )
           ) : (

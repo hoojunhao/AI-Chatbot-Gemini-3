@@ -123,8 +123,8 @@ const SearchPage: React.FC<SearchPageProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#131314]">
       {/* Search Header */}
-      <div className="sticky top-0 bg-white dark:bg-[#131314] z-10 p-6 pb-4 pt-6">
-        <div className="max-w-2xl mx-auto">
+      <div className="sticky top-0 bg-white dark:bg-[#131314] z-10 p-6 pb-4 pt-0">
+        <div className="max-w-xl mx-auto">
           <h1 className="text-2xl font-normal text-gray-800 dark:text-gray-100 mb-6">Search</h1>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -154,7 +154,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
 
       {/* Results Area */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-xl mx-auto">
           {!query.trim() ? (
             // Default view - Recent chats grouped by date
             sessions.length === 0 ? (
