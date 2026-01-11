@@ -85,18 +85,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (e.key === 'Escape') setEditingSessionId(null);
   };
 
-  const renderSessionRow = (session: ChatSession) => (
+  const renderSessionRow = (session: ChatSession, index: number) => (
     <div
       key={session.id}
       className={`
         group flex items-center gap-3 px-3 py-2 rounded-full cursor-pointer
         text-sm text-gray-700 dark:text-gray-200
-        transition-colors
+        transition-colors animate-fade-in-fast
         ${currentSessionId === session.id
           ? 'bg-[#d3e3fd] dark:bg-[#004a77] font-medium'
           : 'hover:bg-gray-200 dark:hover:bg-[#333]'
         }
       `}
+      style={{ opacity: 0, animationDelay: `${index * 0.05}s` }}
       onClick={() => onSelectSession(session.id)}
     >
       {editingSessionId === session.id ? (
@@ -246,8 +247,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           {user && isOpen ? (
             <>
               <div className="px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mt-2">Chats</div>
-              {pinnedSessions.map(renderSessionRow)}
-              {visibleUnpinnedSessions.map(renderSessionRow)}
+              {pinnedSessions.map((session, index) => renderSessionRow(session, index))}
+              {visibleUnpinnedSessions.map((session, index) => renderSessionRow(session, pinnedSessions.length + index))}
 
               {/* Sentinel for lazy loading more unpinned sessions */}
               {hasMore && (

@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { ProfileService } from '../services/profileService';
 
 interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
+    userName: string | null;
     signUp: (email: string, password: string, fullName: string) => Promise<void>;
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
@@ -18,6 +20,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
+    const [userName, setUserName] = useState<string | null>(null);
+
+    // Fetch user profile to get userName
+    const fetchUserProfile = async (userId: string) => {
+        const profile = await ProfileService.getProfile(userId);
+        if (profile) {
+            setUserName(profile.user_name);
+        }
+    };
 
     useEffect(() => {
         // Check current session
@@ -25,6 +36,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+
+            // Fetch user profile if logged in
+            if (session?.user) {
+                fetchUserProfile(session.user.id);
+            }
 
             // Clean up hash after initial OAuth redirect
             if (session && window.location.hash) {
@@ -39,6 +55,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+
+            // Fetch user profile if logged in, clear if logged out
+            if (session?.user) {
+                fetchUserProfile(session.user.id);
+            } else {
+                setUserName(null);
+            }
 
             // Cleanup hash after Supabase processes OAuth tokens
             if (session) {
@@ -115,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             user,
             session,
             loading,
+            userName,
             signUp,
             signIn,
             signOut,

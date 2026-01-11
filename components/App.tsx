@@ -37,7 +37,7 @@ const getApiKey = () => {
 };
 
 function GeminiChat() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, userName } = useAuth();
   const { sessionId } = useParams();
   const navigate = useNavigate();
 
@@ -746,12 +746,15 @@ function GeminiChat() {
                     className="w-16 h-16 relative z-10"
                   />
                 </div>
-                <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500">
-                  Hello, Human.
-                </h1>
-                <p className="text-xl text-gray-500 dark:text-gray-400 max-w-lg">
-                  How can I help you today?
-                </p>
+                {/* Always render greeting to reserve space, animate when ready */}
+                <div key={userName || 'guest'} className={user && !userName ? 'invisible' : ''}>
+                  <h1 className="text-4xl md:text-5xl font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-red-500 pb-1 animate-fade-in-fast" style={{ opacity: 0 }}>
+                    Hello, {userName || 'Human'}.
+                  </h1>
+                  <p className="text-xl text-gray-500 dark:text-gray-400 max-w-lg animate-fade-in-fast" style={{ animationDelay: '0.3s', opacity: 0 }}>
+                    How can I help you today?
+                  </p>
+                </div>
               </div>
             )
           ) : (
