@@ -81,7 +81,7 @@ const SettingsPopup: React.FC<SettingsPopupProps> = ({
   return (
     <div
       ref={popupRef}
-      className="absolute bottom-full mb-2 left-0 w-64 bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-2xl shadow-lg border border-gray-200/50 dark:border-[#333]/50 z-50"
+      className="absolute bottom-full mb-2 left-0 w-72 bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-2xl shadow-lg border border-gray-200/50 dark:border-[#333]/50 z-50"
     >
       {/* Menu Items */}
       <div className="py-2">
@@ -112,7 +112,7 @@ const SettingsPopup: React.FC<SettingsPopupProps> = ({
 
           {/* Theme Submenu */}
           {showThemeSubmenu && (
-            <div className="absolute left-full top-0 w-40 bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-lg shadow-lg border border-gray-200/50 dark:border-[#333]/50 py-1">
+            <div className="absolute left-full top-0 w-[184px] bg-[#f0f4f9] dark:bg-[#1e1f20] rounded-lg shadow-lg border border-gray-200/50 dark:border-[#333]/50 py-1">
               {/* System */}
               <button
                 onClick={() => handleThemeSelect('system')}
@@ -173,7 +173,7 @@ const SettingsPopup: React.FC<SettingsPopupProps> = ({
 
           <div className="flex-1 min-w-0">
             {/* Location name */}
-            <div className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
+            <div className="text-xs font-medium text-blue-600 dark:text-blue-400 break-words">
               {locationLoading ? (
                 <span className="text-gray-500 dark:text-gray-400">...</span>
               ) : userLocation ? (
@@ -184,8 +184,8 @@ const SettingsPopup: React.FC<SettingsPopupProps> = ({
             </div>
 
             {/* Subtext and update link */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              <span>{userLocation?.source === 'gps' ? strings.basedOn.replace('IP address', 'GPS') : strings.basedOn}</span>
+            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+              <span>{userLocation?.source === 'gps' ? 'From your device' : strings.basedOn}</span>
               <span className="mx-1">·</span>
               <button
                 onClick={(e) => {

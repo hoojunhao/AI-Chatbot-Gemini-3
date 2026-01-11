@@ -44,7 +44,7 @@ function GeminiChat() {
   // Initialize sidebar state based on screen size
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 1000;
+      return window.innerWidth >= 900;
     }
     return true;
   });
@@ -53,7 +53,7 @@ function GeminiChat() {
   useEffect(() => {
     const handleResize = () => {
       // Only auto-collapse when window becomes narrow
-      if (window.innerWidth < 1000) {
+      if (window.innerWidth < 900) {
         setIsSidebarOpen(false);
       }
       // Don't auto-expand when window becomes wide - let user control it
