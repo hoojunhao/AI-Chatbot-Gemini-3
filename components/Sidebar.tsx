@@ -6,8 +6,6 @@ import {
   Menu,
   Search,
   Trash2,
-  Moon,
-  Sun,
   Pin,
   Pencil,
   LogIn,
@@ -18,7 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SidebarProps, ChatSession } from '../types';
-import LocationDisplay from './LocationDisplay';
+import SettingsPopup from './SettingsPopup';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -32,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRenameSession,
   onOpenSettings,
   isDarkMode,
-  toggleTheme,
+  themePreference,
+  setThemePreference,
   userLocation,
   locationLoading,
   onUpdateLocation,
@@ -43,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [isSettingsPopupOpen, setIsSettingsPopupOpen] = useState(false);
 
   const filteredSessions = sessions.filter(s =>
     s.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -255,37 +255,31 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Location Display */}
-        <LocationDisplay
-          location={userLocation}
-          loading={locationLoading}
-          onUpdateLocation={onUpdateLocation}
-          isOpen={isOpen}
-        />
-
         {/* Footer Actions */}
         <div className={`p-2 mt-auto border-t border-gray-200 dark:border-[#333] ${!isOpen ? 'flex flex-col items-center' : ''}`}>
           {user && (
-            <button
-              onClick={onOpenSettings}
-              className={`flex items-center gap-3 ${isOpen ? 'w-full' : 'justify-center'} p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors`}
-              title={!isOpen ? "Settings" : undefined}
-            >
-              <Settings className="w-5 h-5 text-gray-500" />
-              {isOpen && <span>Settings</span>}
-            </button>
-          )}
+            <div className="relative">
+              <button
+                onClick={() => setIsSettingsPopupOpen(!isSettingsPopupOpen)}
+                className={`flex items-center gap-3 ${isOpen ? 'w-full' : 'justify-center'} p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors`}
+                title={!isOpen ? "Settings" : undefined}
+              >
+                <Settings className="w-5 h-5 text-gray-500" />
+                {isOpen && <span>Settings</span>}
+              </button>
 
-          {isOpen && (
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-3 w-full p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors"
-            >
-              {isDarkMode ? <Sun className="w-5 h-5 text-gray-500" /> : <Moon className="w-5 h-5 text-gray-500" />}
-              <span>{isDarkMode ? 'Light theme' : 'Dark theme'}</span>
-            </button>
+              <SettingsPopup
+                isOpen={isSettingsPopupOpen}
+                onClose={() => setIsSettingsPopupOpen(false)}
+                onOpenPreferences={onOpenSettings}
+                themePreference={themePreference}
+                onSetThemePreference={setThemePreference}
+                userLocation={userLocation}
+                locationLoading={locationLoading}
+                onUpdateLocation={onUpdateLocation}
+              />
+            </div>
           )}
-
         </div>
       </div>
     </>

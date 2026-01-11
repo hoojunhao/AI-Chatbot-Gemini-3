@@ -39,7 +39,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-[#1e1f20] rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-[#333]">
-          <h2 className="text-xl font-medium text-gray-800 dark:text-gray-100">Settings</h2>
+          <h2 className="text-xl font-medium text-gray-800 dark:text-gray-100">Preferences</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-full">
             <X className="w-5 h-5 text-gray-500" />
           </button>

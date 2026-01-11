@@ -19,7 +19,7 @@ import MemoryManagerModal from './MemoryManagerModal';
 import ModelSelector from './ModelSelector';
 import MarkdownRenderer from './MarkdownRenderer';
 import { GeminiApiError, generateResponseStream } from '../services/geminiService';
-import { AppSettings, ChatSession, Message, ModelType, ParsedGeminiError, ErrorRecoveryAction, GeminiErrorType, UserLocation } from '../types';
+import { AppSettings, ChatSession, Message, ModelType, ParsedGeminiError, ErrorRecoveryAction, GeminiErrorType, UserLocation, ThemePreference } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { SettingsService } from '../services/settingsService';
@@ -65,17 +65,45 @@ function GeminiChat() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryManagerOpen, setIsMemoryManagerOpen] = useState(false);
 
-  // Initialize theme from local storage or system preference
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  // Initialize theme preference from local storage
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('gemini_theme');
-      if (savedTheme) {
-        return savedTheme === 'dark';
-      }
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const saved = localStorage.getItem('gemini_theme_preference');
+      if (saved === 'system' || saved === 'light' || saved === 'dark') return saved;
+      // Migrate from old theme setting
+      const oldTheme = localStorage.getItem('gemini_theme');
+      if (oldTheme === 'dark') return 'dark';
+      if (oldTheme === 'light') return 'light';
+      return 'system';
     }
-    return false;
+    return 'system';
   });
+
+  // Compute isDarkMode from preference (with system preference listener)
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const computeDarkMode = () => {
+      if (themePreference === 'dark') return true;
+      if (themePreference === 'light') return false;
+      return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    };
+
+    setIsDarkMode(computeDarkMode());
+
+    // Listen for system preference changes when in system mode
+    if (themePreference === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => setIsDarkMode(computeDarkMode());
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [themePreference]);
+
+  // Save theme preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('gemini_theme_preference', themePreference);
+  }, [themePreference]);
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
@@ -604,7 +632,8 @@ function GeminiChat() {
         onRenameSession={renameSession}
         onOpenSettings={() => setIsSettingsOpen(true)}
         isDarkMode={isDarkMode}
-        toggleTheme={() => setIsDarkMode(!isDarkMode)}
+        themePreference={themePreference}
+        setThemePreference={setThemePreference}
         userLocation={userLocation}
         locationLoading={locationLoading}
         onUpdateLocation={handleUpdateLocation}

@@ -3,6 +3,8 @@ export enum ModelType {
   GEMINI_3_PRO = 'gemini-3-pro-preview',
 }
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -53,7 +55,8 @@ export interface SidebarProps {
   onRenameSession: (id: string, newTitle: string) => void;
   onOpenSettings: () => void;
   isDarkMode: boolean;
-  toggleTheme: () => void;
+  themePreference: ThemePreference;
+  setThemePreference: (pref: ThemePreference) => void;
   // Location props
   userLocation: UserLocation | null;
   locationLoading: boolean;
