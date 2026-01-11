@@ -31,6 +31,7 @@ export interface AppSettings {
   temperature: number;
   systemInstruction: string;
   enableMemory: boolean;
+  enableCrossSessionMemory: boolean;  // Cross-session AI memory (remember user across sessions)
   thinkingLevel: 'LOW' | 'HIGH';
   safetySettings: {
     sexuallyExplicit: 'BLOCK_NONE' | 'BLOCK_ONLY_HIGH' | 'BLOCK_MEDIUM_AND_ABOVE' | 'BLOCK_LOW_AND_ABOVE';
@@ -119,4 +120,67 @@ export interface ErrorRecoveryAction {
   label: string;
   action: 'new_chat' | 'retry' | 'clear_context' | 'check_settings' | 'wait';
   primary?: boolean;
+}
+
+// ============================================
+// Cross-Session Memory Types
+// ============================================
+
+export type MemoryCategory = 'preference' | 'interest' | 'personal' | 'technical' | 'project' | 'general';
+
+export interface UserMemory {
+  id: string;
+  userId: string;
+  factText: string;
+  category: MemoryCategory;
+  confidence: number;
+  embedding?: number[];
+  sourceSessionId?: string;
+  sourceMessageId?: string;
+  accessCount: number;
+  lastAccessedAt?: number;
+  isPinned: boolean;
+  isDeleted: boolean;
+  createdAt: number;
+  updatedAt: number;
+  similarity?: number;  // Only present when retrieved via semantic search
+}
+
+export interface ExtractedFact {
+  text: string;
+  category: MemoryCategory;
+  confidence: number;
+}
+
+export interface MemoryConfig {
+  extractionModel: string;
+  extractionWindowSize: number;
+  minConfidenceThreshold: number;
+  deduplicationThreshold: number;
+  retrievalThreshold: number;
+  maxMemoriesToRetrieve: number;
+  maxMemoryTokens: number;
+  // Session RAG config
+  maxSessionsToSearch: number;
+  sessionRagThreshold: number;
+  maxSessionsToRetrieve: number;
+}
+
+// Session summary match result from RAG search
+export interface SessionSummaryMatch {
+  session_id: string;
+  summary_text: string;
+  similarity: number;
+  updated_at: string;
+}
+
+// ============================================
+// Session Synopsis Types
+// ============================================
+
+export interface SynopsisConfig {
+  idleTimeoutMs: number;      // Idle timeout in milliseconds
+  minMessages: number;        // Minimum messages required for synopsis
+  synopsisModel: string;      // Model to use for synopsis generation
+  maxOutputTokens: number;    // Max tokens for synopsis output
 }

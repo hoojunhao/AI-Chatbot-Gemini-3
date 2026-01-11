@@ -2,6 +2,7 @@ import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/g
 import { AppSettings, Message, ModelType, GeminiErrorType } from "../types";
 import { createSlidingWindow } from "./contextManager";
 import { SummaryService } from "./summaryService";
+import { getMemoryManager } from "./memoryManager";
 import { parseGeminiError, isContextOverflow, isRetryableError, getRetryDelay } from "./errorService";
 
 // ============================================
@@ -33,6 +34,7 @@ export const generateResponseStream = async function* (
   newMessage: string,
   attachments: { mimeType: string; data: string }[] = [],
   sessionId?: string,  // Add sessionId parameter for summarization (optional for guest users)
+  userId?: string,     // Add userId parameter for cross-session memory
   retryAttempt: number = 0  // For auto-retry with exponential backoff
 ) {
   if (!apiKey) throw new Error("API Key is missing");
@@ -61,8 +63,39 @@ export const generateResponseStream = async function* (
   if (settings.enableMemory) {
     let contextMessages: Message[];
 
-    if (sessionId) {
-      // Logged-in user: Use summarization for context management
+    if (sessionId && userId && settings.enableCrossSessionMemory) {
+      // Logged-in user with cross-session memory enabled
+      try {
+        const memoryManager = getMemoryManager(apiKey);
+        contextMessages = await memoryManager.buildContextWithMemory(
+          userId,
+          sessionId,
+          history,
+          newMessage
+        );
+        console.log(`🧠 Context with cross-session memory: ${contextMessages.length} messages`);
+      } catch (error) {
+        console.error('Memory manager failed, falling back to summarization:', error);
+        // Fallback to summarization only
+        try {
+          contextMessages = await SummaryService.buildContextWithSummary(
+            apiKey,
+            sessionId,
+            history
+          );
+          console.log(`📦 Fallback - Context with summarization: ${contextMessages.length} messages`);
+        } catch (summaryError) {
+          console.error('Summarization also failed, using sliding window:', summaryError);
+          const systemInstructionTokens = settings.systemInstruction
+            ? Math.ceil(settings.systemInstruction.length / 4)
+            : 0;
+          const contextWindow = createSlidingWindow(history, systemInstructionTokens);
+          contextMessages = contextWindow.messages;
+          console.log(`⚠️ Final fallback - Sliding window: ${contextWindow.messages.length}/${contextWindow.originalCount} messages`);
+        }
+      }
+    } else if (sessionId) {
+      // Logged-in user without cross-session memory: Use summarization for context management
       try {
         contextMessages = await SummaryService.buildContextWithSummary(
           apiKey,
@@ -179,6 +212,13 @@ export const generateResponseStream = async function* (
       throw new GeminiApiError(error);
     }
 
+    // Background memory extraction (fire-and-forget)
+    if (settings.enableCrossSessionMemory && userId && sessionId) {
+      const memoryManager = getMemoryManager(apiKey);
+      memoryManager.processConversationForMemories(userId, sessionId, history)
+        .catch(err => console.error('Background memory extraction failed:', err));
+    }
+
   } catch (error) {
     console.error("Gemini API Error:", error);
 
@@ -213,6 +253,7 @@ export const generateResponseStream = async function* (
         newMessage,
         attachments,
         sessionId,
+        userId,
         retryAttempt + 1
       );
       return;

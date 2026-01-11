@@ -15,6 +15,7 @@ import {
 import Auth from './Auth';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
+import MemoryManagerModal from './MemoryManagerModal';
 import ModelSelector from './ModelSelector';
 import MarkdownRenderer from './MarkdownRenderer';
 import { GeminiApiError, generateResponseStream } from '../services/geminiService';
@@ -26,6 +27,7 @@ import { ChatService } from '../services/chatService';
 import ChatMessage from './ChatMessage';
 import { ErrorMessage } from './ErrorMessage';
 import { parseGeminiError, formatErrorForChat } from '../services/errorService';
+import { useSessionSynopsis } from '../hooks/useSessionSynopsis';
 
 // Safely retrieve API Key
 const getApiKey = () => {
@@ -60,6 +62,7 @@ function GeminiChat() {
   }, []);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMemoryManagerOpen, setIsMemoryManagerOpen] = useState(false);
 
   // Initialize theme from local storage or system preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -115,6 +118,15 @@ function GeminiChat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Session Synopsis Hook - generates lightweight synopses for Session RAG
+  // Triggers on session switch and idle timeout (60 min)
+  useSessionSynopsis({
+    currentSessionId,
+    sessions,
+    apiKey: getApiKey(),
+    userId: user?.id,
+    enabled: !!user && settings.enableCrossSessionMemory
+  });
 
   // Sync URL sessionId with state
   useEffect(() => {
@@ -311,7 +323,8 @@ function GeminiChat() {
         existingMessages,
         currentInput,
         currentAttachments,
-        activeSessionId  // Pass session ID for summarization (undefined for guest users)
+        activeSessionId,  // Pass session ID for summarization (undefined for guest users)
+        user?.id          // Pass user ID for cross-session memory
       );
 
       let fullResponse = '';
@@ -796,7 +809,18 @@ function GeminiChat() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
+        isLoggedIn={!!user}
+        onOpenMemoryManager={() => setIsMemoryManagerOpen(true)}
       />
+
+      {user && (
+        <MemoryManagerModal
+          isOpen={isMemoryManagerOpen}
+          onClose={() => setIsMemoryManagerOpen(false)}
+          userId={user.id}
+          apiKey={getApiKey()}
+        />
+      )}
     </div>
   );
 }

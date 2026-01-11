@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { Message, SessionSummary } from '../types';
 import { SUMMARIZATION_CONFIG, SUMMARIZATION_PROMPTS } from '../constants';
 import { estimateTotalTokens } from './tokenEstimator';
+import { getEmbeddingService } from './embeddingService';
 
 /**
  * Summary Service
@@ -50,24 +51,47 @@ export class SummaryService {
   }
 
   /**
-   * Save or update summary for a session
+   * Save or update summary for a session (with embedding for RAG)
    */
   static async saveSummary(
     sessionId: string,
     summaryText: string,
-    messagesSummarizedCount: number
+    messagesSummarizedCount: number,
+    apiKey?: string
   ): Promise<void> {
     const existing = await this.getSummary(sessionId);
 
+    // Generate embedding for Session RAG (if apiKey provided)
+    let formattedEmbedding: string | null = null;
+    if (apiKey) {
+      try {
+        const embeddingService = getEmbeddingService(apiKey);
+        const embedding = await embeddingService.generateEmbedding(
+          summaryText,
+          'RETRIEVAL_DOCUMENT'
+        );
+        formattedEmbedding = `[${embedding.join(',')}]`;
+        console.log('🔍 Generated embedding for session summary');
+      } catch (error) {
+        console.error('Failed to generate summary embedding:', error);
+        // Continue without embedding - not critical
+      }
+    }
+
     if (existing) {
       // Update existing summary
+      const updateData: Record<string, unknown> = {
+        summary_text: summaryText,
+        messages_summarized_count: messagesSummarizedCount,
+        version: existing.version + 1,
+      };
+      if (formattedEmbedding) {
+        updateData.embedding = formattedEmbedding;
+      }
+
       const { error } = await supabase
         .from('session_summaries')
-        .update({
-          summary_text: summaryText,
-          messages_summarized_count: messagesSummarizedCount,
-          version: existing.version + 1,
-        })
+        .update(updateData)
         .eq('session_id', sessionId);
 
       if (error) {
@@ -76,14 +100,19 @@ export class SummaryService {
       }
     } else {
       // Create new summary
+      const insertData: Record<string, unknown> = {
+        session_id: sessionId,
+        summary_text: summaryText,
+        messages_summarized_count: messagesSummarizedCount,
+        version: 1,
+      };
+      if (formattedEmbedding) {
+        insertData.embedding = formattedEmbedding;
+      }
+
       const { error } = await supabase
         .from('session_summaries')
-        .insert({
-          session_id: sessionId,
-          summary_text: summaryText,
-          messages_summarized_count: messagesSummarizedCount,
-          version: 1,
-        });
+        .insert(insertData);
 
       if (error) {
         console.error('Error creating summary:', error);
@@ -252,14 +281,15 @@ export class SummaryService {
       existingSummary?.summaryText
     );
 
-    // Save to database
+    // Save to database (with embedding for Session RAG)
     await this.saveSummary(
       sessionId,
       newSummary,
-      cutoffIndex
+      cutoffIndex,
+      apiKey
     );
 
-    console.log('✓ Summary saved to database');
+    console.log('✓ Summary saved to database with embedding');
 
     // Return updated summary
     return await this.getSummary(sessionId);

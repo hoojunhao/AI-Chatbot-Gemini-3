@@ -23,6 +23,7 @@ export class SettingsService {
             temperature: data.temperature,
             systemInstruction: data.system_instruction || '',
             enableMemory: data.enable_memory,
+            enableCrossSessionMemory: data.enable_saved_info ?? true,  // Map enable_saved_info to cross-session memory
             thinkingLevel: data.thinking_level as 'LOW' | 'HIGH',
             safetySettings: data.safety_settings || DEFAULT_SETTINGS.safetySettings,
         };
@@ -37,6 +38,7 @@ export class SettingsService {
                 temperature: settings.temperature,
                 system_instruction: settings.systemInstruction,
                 enable_memory: settings.enableMemory,
+                enable_saved_info: settings.enableCrossSessionMemory,  // Map cross-session memory to enable_saved_info
                 thinking_level: settings.thinkingLevel,
                 safety_settings: settings.safetySettings,
                 updated_at: new Date().toISOString(),
