@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   Menu,
   Send,
@@ -260,6 +260,7 @@ function GeminiChat() {
     setInput('');
     setAttachments([]);
     setIsTemporaryMode(false);  // Reset temporary mode when starting a new chat
+    setIsSearchOpen(false);     // Close search page when starting a new chat
   };
 
   const deleteSession = (id: string) => {
@@ -682,7 +683,7 @@ function GeminiChat() {
             ? 'bg-[#F0F4F8]/80 dark:bg-[#1e1f20]/80'
             : 'bg-white/80 dark:bg-[#131314]/80'
         }`}>
-          <Link to="/app" className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1 hover:opacity-80 transition-opacity">Gemini</Link>
+          <span onClick={createNewSession} className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1 hover:opacity-80 transition-opacity cursor-pointer">Gemini</span>
           <div className="ml-auto">
             {user ? (
               <button
