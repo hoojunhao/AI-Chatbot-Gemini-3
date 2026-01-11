@@ -1,9 +1,10 @@
 import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/genai";
-import { AppSettings, Message, ModelType, GeminiErrorType } from "../types";
+import { AppSettings, Message, ModelType, GeminiErrorType, UserLocation } from "../types";
 import { createSlidingWindow } from "./contextManager";
 import { SummaryService } from "./summaryService";
 import { getMemoryManager } from "./memoryManager";
 import { parseGeminiError, isContextOverflow, isRetryableError, getRetryDelay } from "./errorService";
+import { LocationService } from "./locationService";
 
 // ============================================
 // DateTime Context for Real-Time Awareness
@@ -56,7 +57,8 @@ export const generateResponseStream = async function* (
   attachments: { mimeType: string; data: string }[] = [],
   sessionId?: string,  // Add sessionId parameter for summarization (optional for guest users)
   userId?: string,     // Add userId parameter for cross-session memory
-  retryAttempt: number = 0  // For auto-retry with exponential backoff
+  retryAttempt: number = 0,  // For auto-retry with exponential backoff
+  userLocation?: UserLocation | null  // User's location for context-aware responses
 ) {
   if (!apiKey) throw new Error("API Key is missing");
 
@@ -156,11 +158,17 @@ export const generateResponseStream = async function* (
   // Add the new message to contents
   contents.push({ role: 'user', parts });
 
-  // Generation Config with real-time awareness
+  // Generation Config with real-time and location awareness
   const dateTimeContext = getCurrentDateTimeContext();
-  const enhancedSystemInstruction = settings.systemInstruction
-    ? `${dateTimeContext}\n\n${settings.systemInstruction}`
-    : dateTimeContext;
+  const locationContext = userLocation
+    ? LocationService.formatLocationContext(userLocation)
+    : '';
+
+  const enhancedSystemInstruction = [
+    dateTimeContext,
+    locationContext,
+    settings.systemInstruction
+  ].filter(Boolean).join('\n\n');
 
   const config: any = {
     systemInstruction: enhancedSystemInstruction,
@@ -280,7 +288,8 @@ export const generateResponseStream = async function* (
         attachments,
         sessionId,
         userId,
-        retryAttempt + 1
+        retryAttempt + 1,
+        userLocation
       );
       return;
     }

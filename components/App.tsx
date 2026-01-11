@@ -19,11 +19,12 @@ import MemoryManagerModal from './MemoryManagerModal';
 import ModelSelector from './ModelSelector';
 import MarkdownRenderer from './MarkdownRenderer';
 import { GeminiApiError, generateResponseStream } from '../services/geminiService';
-import { AppSettings, ChatSession, Message, ModelType, ParsedGeminiError, ErrorRecoveryAction, GeminiErrorType } from '../types';
+import { AppSettings, ChatSession, Message, ModelType, ParsedGeminiError, ErrorRecoveryAction, GeminiErrorType, UserLocation } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { SettingsService } from '../services/settingsService';
 import { ChatService } from '../services/chatService';
+import { LocationService } from '../services/locationService';
 import ChatMessage from './ChatMessage';
 import { ErrorMessage } from './ErrorMessage';
 import { parseGeminiError, formatErrorForChat } from '../services/errorService';
@@ -77,6 +78,40 @@ function GeminiChat() {
   });
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+
+  // Location State
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
+
+  // Load IP-based location on mount (no permission needed)
+  useEffect(() => {
+    LocationService.getLocationFromIP()
+      .then(location => {
+        setUserLocation(location);
+        console.log('📍 Location loaded:', location.displayName);
+      })
+      .catch(err => {
+        console.error('Failed to get location:', err);
+      })
+      .finally(() => {
+        setLocationLoading(false);
+      });
+  }, []);
+
+  // Handler for "Update location" - uses browser geolocation (requires permission)
+  const handleUpdateLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const location = await LocationService.getLocationFromBrowser();
+      setUserLocation(location);
+      console.log('📍 Location updated via GPS:', location.displayName);
+    } catch (err) {
+      console.error('Failed to update location:', err);
+      // Keep the previous IP-based location on failure
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   // Load settings from Supabase on login
   useEffect(() => {
@@ -324,7 +359,9 @@ function GeminiChat() {
         currentInput,
         currentAttachments,
         activeSessionId,  // Pass session ID for summarization (undefined for guest users)
-        user?.id          // Pass user ID for cross-session memory
+        user?.id,         // Pass user ID for cross-session memory
+        0,                // retryAttempt
+        userLocation      // User's location for context-aware responses
       );
 
       let fullResponse = '';
@@ -568,6 +605,9 @@ function GeminiChat() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         isDarkMode={isDarkMode}
         toggleTheme={() => setIsDarkMode(!isDarkMode)}
+        userLocation={userLocation}
+        locationLoading={locationLoading}
+        onUpdateLocation={handleUpdateLocation}
       />
 
       {/* Main Content */}

@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SidebarProps, ChatSession } from '../types';
+import LocationDisplay from './LocationDisplay';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -32,6 +33,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   isDarkMode,
   toggleTheme,
+  userLocation,
+  locationLoading,
+  onUpdateLocation,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -250,6 +254,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             )
           )}
         </div>
+
+        {/* Location Display */}
+        <LocationDisplay
+          location={userLocation}
+          loading={locationLoading}
+          onUpdateLocation={onUpdateLocation}
+          isOpen={isOpen}
+        />
 
         {/* Footer Actions */}
         <div className={`p-2 mt-auto border-t border-gray-200 dark:border-[#333] ${!isOpen ? 'flex flex-col items-center' : ''}`}>

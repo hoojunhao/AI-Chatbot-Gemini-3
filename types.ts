@@ -54,6 +54,10 @@ export interface SidebarProps {
   onOpenSettings: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  // Location props
+  userLocation: UserLocation | null;
+  locationLoading: boolean;
+  onUpdateLocation: () => void;
 }
 
 // ============================================
@@ -183,4 +187,19 @@ export interface SynopsisConfig {
   minMessages: number;        // Minimum messages required for synopsis
   synopsisModel: string;      // Model to use for synopsis generation
   maxOutputTokens: number;    // Max tokens for synopsis output
+}
+
+// ============================================
+// Location Types
+// ============================================
+
+export interface UserLocation {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  region?: string;
+  country?: string;
+  displayName: string;  // Localized short format (e.g., "台灣桃園市中壢區")
+  source: 'ip' | 'gps';
+  timestamp: number;
 }
