@@ -17,13 +17,15 @@ import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
 import ModelSelector from './ModelSelector';
 import MarkdownRenderer from './MarkdownRenderer';
-import { generateResponseStream } from '../services/geminiService';
-import { AppSettings, ChatSession, Message, ModelType } from '../types';
+import { GeminiApiError, generateResponseStream } from '../services/geminiService';
+import { AppSettings, ChatSession, Message, ModelType, ParsedGeminiError, ErrorRecoveryAction, GeminiErrorType } from '../types';
 import { DEFAULT_SETTINGS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { SettingsService } from '../services/settingsService';
 import { ChatService } from '../services/chatService';
 import ChatMessage from './ChatMessage';
+import { ErrorMessage } from './ErrorMessage';
+import { parseGeminiError, formatErrorForChat } from '../services/errorService';
 
 // Safely retrieve API Key
 const getApiKey = () => {
@@ -101,6 +103,7 @@ function GeminiChat() {
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachments, setAttachments] = useState<{ mimeType: string; data: string; name: string }[]>([]);
+  const [lastError, setLastError] = useState<ParsedGeminiError | null>(null);
 
   // Audio State
   const [isRecording, setIsRecording] = useState(false);
@@ -336,16 +339,39 @@ function GeminiChat() {
           .catch(err => console.error("Failed to save model message", err));
       }
 
+      // Clear any previous error on successful message
+      setLastError(null);
+
     } catch (error) {
       console.error("Error generating response:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
+      let parsedError: ParsedGeminiError;
+
+      // Check if this is already a GeminiApiError with structured data
+      if (error instanceof GeminiApiError) {
+        parsedError = {
+          type: error.type,
+          message: error.message,
+          userMessage: error.userMessage,
+          suggestion: error.suggestion,
+          retryable: error.retryable,
+          httpCode: error.httpCode,
+        };
+      } else {
+        // Parse generic errors
+        parsedError = parseGeminiError(error);
+      }
+
+      // Store the error for UI display
+      setLastError(parsedError);
+
+      // Update the message in the chat to show error
       setSessions(prev => prev.map(s => {
         if (s.id === activeSessionId) {
           const msgs = [...s.messages];
           const lastMsg = msgs[msgs.length - 1];
-          if (lastMsg.id === modelMsgId) {
-            lastMsg.text = `Error: ${errorMessage}. Please check your connection and API Key.`;
+          if (lastMsg && lastMsg.id === modelMsgId) {
+            lastMsg.text = formatErrorForChat(parsedError);
             lastMsg.isError = true;
           }
           return { ...s, messages: msgs };
@@ -353,8 +379,9 @@ function GeminiChat() {
         return s;
       }));
 
+      // Save error message to database for logged-in users
       if (activeSessionId && user) {
-        ChatService.saveMessage(activeSessionId, 'model', `Error: ${errorMessage}`, undefined, true)
+        ChatService.saveMessage(activeSessionId, 'model', formatErrorForChat(parsedError), undefined, true)
           .catch(err => console.error("Failed to save error message", err));
       }
 
@@ -362,6 +389,70 @@ function GeminiChat() {
       setIsGenerating(false);
       setIsGenerating(false);
       // scrollToBottom(); // Removed force scroll at end to preserve reading position
+    }
+  };
+
+  // Handle error recovery actions
+  const handleErrorRecovery = (action: ErrorRecoveryAction['action']) => {
+    switch (action) {
+      case 'new_chat':
+        // Navigate to new chat
+        navigate('/app');
+        setLastError(null);
+        break;
+
+      case 'retry':
+        // Retry the last message
+        if (currentSession && currentSession.messages.length >= 2) {
+          const lastUserMsg = [...currentSession.messages]
+            .reverse()
+            .find(m => m.role === 'user' && !m.isError);
+          if (lastUserMsg) {
+            // Remove the error message and retry
+            setSessions(prev => prev.map(s => {
+              if (s.id === currentSessionId) {
+                return {
+                  ...s,
+                  messages: s.messages.filter(m => !m.isError)
+                };
+              }
+              return s;
+            }));
+            setInput(lastUserMsg.text);
+            setLastError(null);
+            // Trigger send
+            setTimeout(() => handleSendMessage(), 100);
+          }
+        }
+        break;
+
+      case 'clear_context':
+        // Clear older messages, keep recent 10
+        if (currentSession) {
+          const recentMessages = currentSession.messages.slice(-10);
+          setSessions(prev => prev.map(s => {
+            if (s.id === currentSessionId) {
+              return { ...s, messages: recentMessages };
+            }
+            return s;
+          }));
+          setLastError(null);
+        }
+        break;
+
+      case 'check_settings':
+        // Open settings modal
+        setIsSettingsOpen(true);
+        setLastError(null);
+        break;
+
+      case 'wait':
+        // Show countdown and auto-retry
+        setLastError(null);
+        setTimeout(() => {
+          handleErrorRecovery('retry');
+        }, 5000);
+        break;
     }
   };
 
@@ -543,6 +634,16 @@ function GeminiChat() {
             </div>
           )}
         </div>
+
+        {/* Error Message Display */}
+        {lastError && (
+          <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 max-w-lg w-full px-4 z-50">
+            <ErrorMessage
+              error={lastError}
+              onAction={handleErrorRecovery}
+            />
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#131314]/90 backdrop-blur-md pt-2 pb-6 px-4">

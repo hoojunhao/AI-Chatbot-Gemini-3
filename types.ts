@@ -90,3 +90,33 @@ export interface TokenEstimationConfig {
   cjkCharsPerToken: number;
   latinCharsPerToken: number;
 }
+
+// ============================================
+// Error Handling Types
+// ============================================
+
+export enum GeminiErrorType {
+  CONTEXT_OVERFLOW = 'CONTEXT_OVERFLOW',
+  RATE_LIMITED = 'RATE_LIMITED',
+  INVALID_API_KEY = 'INVALID_API_KEY',
+  SAFETY_BLOCKED = 'SAFETY_BLOCKED',
+  MODEL_UNAVAILABLE = 'MODEL_UNAVAILABLE',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export interface ParsedGeminiError {
+  type: GeminiErrorType;
+  message: string;
+  userMessage: string;
+  suggestion: string;
+  retryable: boolean;
+  httpCode?: number;
+  rawError?: unknown;
+}
+
+export interface ErrorRecoveryAction {
+  label: string;
+  action: 'new_chat' | 'retry' | 'clear_context' | 'check_settings' | 'wait';
+  primary?: boolean;
+}

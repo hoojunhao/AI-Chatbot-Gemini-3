@@ -1,7 +1,30 @@
 import { GoogleGenAI, Content, Part, GenerateContentParameters } from "@google/genai";
-import { AppSettings, Message, ModelType } from "../types";
+import { AppSettings, Message, ModelType, GeminiErrorType } from "../types";
 import { createSlidingWindow } from "./contextManager";
 import { SummaryService } from "./summaryService";
+import { parseGeminiError, isContextOverflow, isRetryableError, getRetryDelay } from "./errorService";
+
+// ============================================
+// Custom Error Class
+// ============================================
+
+export class GeminiApiError extends Error {
+  type: GeminiErrorType;
+  userMessage: string;
+  suggestion: string;
+  retryable: boolean;
+  httpCode?: number;
+
+  constructor(parsedError: ReturnType<typeof parseGeminiError>) {
+    super(parsedError.message);
+    this.name = 'GeminiApiError';
+    this.type = parsedError.type;
+    this.userMessage = parsedError.userMessage;
+    this.suggestion = parsedError.suggestion;
+    this.retryable = parsedError.retryable;
+    this.httpCode = parsedError.httpCode;
+  }
+}
 
 export const generateResponseStream = async function* (
   apiKey: string,
@@ -9,7 +32,8 @@ export const generateResponseStream = async function* (
   history: Message[],
   newMessage: string,
   attachments: { mimeType: string; data: string }[] = [],
-  sessionId?: string  // Add sessionId parameter for summarization (optional for guest users)
+  sessionId?: string,  // Add sessionId parameter for summarization (optional for guest users)
+  retryAttempt: number = 0  // For auto-retry with exponential backoff
 ) {
   if (!apiKey) throw new Error("API Key is missing");
 
@@ -112,6 +136,14 @@ export const generateResponseStream = async function* (
     for await (const chunk of responseStream) {
       const parts = chunk.candidates?.[0]?.content?.parts;
 
+      // Check for safety blocks in the response
+      const finishReason = chunk.candidates?.[0]?.finishReason;
+      if (finishReason === 'SAFETY') {
+        const error = parseGeminiError({ message: 'Response blocked by safety filters' });
+        error.type = GeminiErrorType.SAFETY_BLOCKED;
+        throw new GeminiApiError(error);
+      }
+
       if (parts) {
         for (const part of parts) {
           // Check for native thinking part
@@ -141,11 +173,51 @@ export const generateResponseStream = async function* (
     }
 
     if (!hasYielded) {
-      yield "I'm unable to generate a response for this request. It might have been flagged by safety filters.";
+      // Check if this might be a safety filter issue
+      const error = parseGeminiError({ message: 'No response generated - possibly filtered' });
+      error.type = GeminiErrorType.SAFETY_BLOCKED;
+      throw new GeminiApiError(error);
     }
 
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw error;
+
+    // If already a GeminiApiError, re-throw
+    if (error instanceof GeminiApiError) {
+      throw error;
+    }
+
+    // Parse the error
+    const parsedError = parseGeminiError(error);
+
+    // Check for context overflow specifically
+    if (isContextOverflow(error)) {
+      console.warn('Context overflow detected - conversation too long');
+      parsedError.type = GeminiErrorType.CONTEXT_OVERFLOW;
+      parsedError.userMessage = 'This conversation has become too long for the AI to process.';
+      parsedError.suggestion = 'Please start a new chat to continue. Your conversation history is saved.';
+    }
+
+    // Auto-retry for retryable errors (with limit)
+    if (isRetryableError(error) && retryAttempt < 3) {
+      const delay = getRetryDelay(retryAttempt);
+      console.log(`🔄 Retrying in ${Math.round(delay)}ms (attempt ${retryAttempt + 1}/3)...`);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Recursive retry with yield*
+      yield* generateResponseStream(
+        apiKey,
+        settings,
+        history,
+        newMessage,
+        attachments,
+        sessionId,
+        retryAttempt + 1
+      );
+      return;
+    }
+
+    throw new GeminiApiError(parsedError);
   }
 };
