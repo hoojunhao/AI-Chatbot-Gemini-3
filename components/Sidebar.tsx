@@ -17,6 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { SidebarProps, ChatSession } from '../types';
 import SettingsPopup from './SettingsPopup';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import { SIDEBAR_LAZY_LOAD_CONFIG } from '../constants';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -50,6 +52,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   const visibleSessions = sessions.filter(s => !s.isTemporary);
   const pinnedSessions = visibleSessions.filter(s => s.isPinned);
   const unpinnedSessions = visibleSessions.filter(s => !s.isPinned);
+
+  // Lazy load unpinned sessions for better performance with many chats
+  const {
+    visibleItems: visibleUnpinnedSessions,
+    sentinelRef,
+    hasMore,
+  } = useInfiniteScroll(unpinnedSessions, SIDEBAR_LAZY_LOAD_CONFIG);
 
   const handleStartEdit = (session: ChatSession, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -238,7 +247,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             <>
               <div className="px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 mt-2">Chats</div>
               {pinnedSessions.map(renderSessionRow)}
-              {unpinnedSessions.map(renderSessionRow)}
+              {visibleUnpinnedSessions.map(renderSessionRow)}
+
+              {/* Sentinel for lazy loading more unpinned sessions */}
+              {hasMore && (
+                <div
+                  ref={sentinelRef}
+                  className="h-8 flex items-center justify-center"
+                >
+                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
 
               {sessions.length === 0 && (
                 <div className="px-4 text-xs text-gray-400 italic">No chats yet</div>

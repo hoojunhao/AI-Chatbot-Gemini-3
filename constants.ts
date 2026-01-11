@@ -203,3 +203,13 @@ Keep it under 100 words. Preserve non-English text exactly as written.
 
 Conversation:
 `;
+
+// ============================================
+// Sidebar Lazy Load Configuration
+// ============================================
+
+export const SIDEBAR_LAZY_LOAD_CONFIG = {
+  initialCount: 20,      // Show first 20 unpinned chats immediately
+  incrementCount: 15,    // Load 15 more when scrolling near bottom
+  rootMargin: '200px',   // Start loading 200px before sentinel is visible
+};
