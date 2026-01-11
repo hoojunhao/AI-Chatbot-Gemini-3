@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Menu,
   Send,
@@ -671,10 +671,18 @@ function GeminiChat() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative h-full w-full">
+      <div className={`flex-1 flex flex-col relative h-full w-full transition-colors ${
+        !currentSession || currentSession.messages.length === 0
+          ? 'bg-[#F0F4F8] dark:bg-[#1e1f20]'
+          : 'bg-white dark:bg-[#131314]'
+      }`}>
         {/* Top Header - Always visible */}
-        <div className="flex items-center p-4 sticky top-0 bg-white/80 dark:bg-[#131314]/80 backdrop-blur-md z-10">
-          <span className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1">Gemini</span>
+        <div className={`flex items-center p-4 sticky top-0 backdrop-blur-md z-10 ${
+          !currentSession || currentSession.messages.length === 0
+            ? 'bg-[#F0F4F8]/80 dark:bg-[#1e1f20]/80'
+            : 'bg-white/80 dark:bg-[#131314]/80'
+        }`}>
+          <Link to="/app" className="text-xl font-medium text-gray-700 dark:text-gray-200 ml-1 hover:opacity-80 transition-opacity">Gemini</Link>
           <div className="ml-auto">
             {user ? (
               <button
@@ -766,7 +774,11 @@ function GeminiChat() {
         )}
 
         {/* Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#131314]/90 backdrop-blur-md pt-2 pb-6 px-4">
+        <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-md pt-2 pb-6 px-4 ${
+          !currentSession || currentSession.messages.length === 0
+            ? 'bg-[#F0F4F8]/90 dark:bg-[#1e1f20]/90'
+            : 'bg-white/90 dark:bg-[#131314]/90'
+        }`}>
           <div className="max-w-3xl mx-auto relative">
             {/* Active Attachments Preview */}
             {attachments.length > 0 && (
@@ -839,7 +851,7 @@ function GeminiChat() {
               }}
               className={`
                  flex items-end gap-2 p-2 rounded-[28px] border transition-colors
-                 ${isGenerating ? 'bg-gray-50 dark:bg-[#1e1f20] border-gray-200 dark:border-[#333]' : 'bg-[#f0f4f9] dark:bg-[#1e1f20] border-transparent focus-within:bg-white dark:focus-within:bg-[#1e1f20] focus-within:border-gray-300 dark:focus-within:border-[#444]'}
+                 ${isGenerating ? 'bg-gray-50 dark:bg-[#1e1f20] border-gray-200 dark:border-[#333]' : 'bg-white dark:bg-[#1e1f20] border-gray-200 dark:border-transparent focus-within:border-gray-300 dark:focus-within:border-[#444]'}
               `}>
               <button
                 onClick={() => fileInputRef.current?.click()}

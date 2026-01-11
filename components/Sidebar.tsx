@@ -181,56 +181,55 @@ const Sidebar: React.FC<SidebarProps> = ({
         flex flex-col
         ${isOpen ? 'w-[306px]' : 'w-[72px]'}
         h-full
-        bg-[#f0f4f9] dark:bg-[#1e1f20]
+        bg-[#E9EEF6] dark:bg-[#1e1f20]
         transition-all duration-300
       `}>
         {/* Header */}
-        <div className={`flex items-center ${isOpen ? 'justify-between px-4' : 'justify-center'} p-4`}>
-          <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
-            <Menu className="w-5 h-5" />
-          </button>
-          {user && isOpen && (
-            <button
-              onClick={onOpenSearch}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500"
-              title="Search"
-            >
-              <Search className="w-5 h-5" />
+        <div className="flex items-center justify-between p-4">
+          <div className="w-[40px] flex justify-center shrink-0">
+            <button onClick={toggleSidebar} className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500">
+              <Menu className="w-5 h-5" />
             </button>
+          </div>
+          {user && (
+            <div className={`flex items-center gap-1 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              {/* Temporary Chat Toggle */}
+              <button
+                onClick={onToggleTemporaryMode}
+                className={`
+                  p-2 rounded-full transition-colors
+                  ${isTemporaryMode
+                    ? 'bg-[#d3e3fd] dark:bg-[#004a77] text-blue-600 dark:text-blue-300'
+                    : 'hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
+                `}
+                title="Temporary chat"
+              >
+                <MessageSquareMore className="w-5 h-5" />
+              </button>
+              {/* Search */}
+              <button
+                onClick={onOpenSearch}
+                className="p-2 hover:bg-gray-200 dark:hover:bg-[#333] rounded-full text-gray-500"
+                title="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
           )}
         </div>
 
         {/* New Chat Button */}
-        <div className={`px-4 mb-4 ${!isOpen ? 'flex flex-col items-center gap-2 px-2' : 'flex items-center gap-2'}`}>
+        <div className="px-4 mb-4">
           <button
             onClick={onNewChat}
-            className={`
-              flex items-center gap-3
-              ${isOpen ? 'flex-1 px-3 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200' : 'p-3 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
-              transition-colors
-              font-medium text-sm
-            `}
+            className="flex items-center gap-3 w-full py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-gray-600 dark:text-gray-200 transition-colors font-medium text-sm"
             title={!isOpen ? "New chat" : undefined}
           >
-            <SquarePen className="w-5 h-5" />
-            {isOpen && <span className="flex-1 text-left">New chat</span>}
+            <div className="w-[40px] flex justify-center shrink-0">
+              <SquarePen className="w-5 h-5" />
+            </div>
+            <span className={`flex-1 text-left whitespace-nowrap transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>New chat</span>
           </button>
-
-          {/* Temporary Chat Toggle - only for logged-in users */}
-          {user && (
-            <button
-              onClick={onToggleTemporaryMode}
-              className={`
-                p-2.5 rounded-full transition-colors
-                ${isTemporaryMode
-                  ? 'bg-[#d3e3fd] dark:bg-[#004a77] text-blue-600 dark:text-blue-300'
-                  : 'hover:bg-gray-200 dark:hover:bg-[#333] text-gray-500'}
-              `}
-              title="Temporary chat"
-            >
-              <MessageSquareMore className="w-5 h-5" />
-            </button>
-          )}
         </div>
 
         {/* Sessions List or Guest Promo */}
@@ -264,16 +263,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className={`p-2 mt-auto border-t border-gray-200 dark:border-[#333] ${!isOpen ? 'flex flex-col items-center' : ''}`}>
+        <div className="px-4 py-2 mt-auto border-t border-gray-200 dark:border-[#333]">
           {user && (
             <div className="relative">
               <button
                 onClick={() => setIsSettingsPopupOpen(!isSettingsPopupOpen)}
-                className={`flex items-center gap-3 ${isOpen ? 'w-full' : 'justify-center'} p-2.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors`}
+                className="flex items-center gap-3 w-full py-2 rounded-full hover:bg-gray-200 dark:hover:bg-[#333] text-sm text-gray-700 dark:text-gray-200 transition-colors"
                 title={!isOpen ? "Settings" : undefined}
               >
-                <Settings className="w-5 h-5 text-gray-500" />
-                {isOpen && <span>Settings</span>}
+                <div className="w-[40px] flex justify-center shrink-0">
+                  <Settings className="w-5 h-5 text-gray-500" />
+                </div>
+                <span className={`whitespace-nowrap transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>Settings</span>
               </button>
 
               <SettingsPopup

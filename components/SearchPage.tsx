@@ -121,9 +121,9 @@ const SearchPage: React.FC<SearchPageProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#131314]">
+    <div className="flex-1 flex flex-col h-full bg-[#F0F4F8] dark:bg-[#1e1f20]">
       {/* Search Header */}
-      <div className="sticky top-0 bg-white dark:bg-[#131314] z-10 p-6 pb-4 pt-0">
+      <div className="sticky top-0 bg-[#F0F4F8] dark:bg-[#1e1f20] z-10 p-6 pb-4 pt-0">
         <div className="max-w-xl mx-auto">
           <h1 className="text-2xl font-normal text-gray-800 dark:text-gray-100 mb-6">Search</h1>
           <div className="relative">
