@@ -6,6 +6,27 @@ import { getMemoryManager } from "./memoryManager";
 import { parseGeminiError, isContextOverflow, isRetryableError, getRetryDelay } from "./errorService";
 
 // ============================================
+// DateTime Context for Real-Time Awareness
+// ============================================
+
+function getCurrentDateTimeContext(): string {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  };
+  const formatted = now.toLocaleString(undefined, options);
+  const isoDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  return `[Current Date & Time: ${formatted} (${isoDate})]`;
+}
+
+// ============================================
 // Custom Error Class
 // ============================================
 
@@ -135,9 +156,14 @@ export const generateResponseStream = async function* (
   // Add the new message to contents
   contents.push({ role: 'user', parts });
 
-  // Generation Config
+  // Generation Config with real-time awareness
+  const dateTimeContext = getCurrentDateTimeContext();
+  const enhancedSystemInstruction = settings.systemInstruction
+    ? `${dateTimeContext}\n\n${settings.systemInstruction}`
+    : dateTimeContext;
+
   const config: any = {
-    systemInstruction: settings.systemInstruction,
+    systemInstruction: enhancedSystemInstruction,
     temperature: settings.temperature,
     safetySettings: [
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: settings.safetySettings.sexuallyExplicit },
